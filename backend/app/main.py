@@ -13,6 +13,7 @@ from backend.app.api.health import router as health_router
 from backend.app.api.models import router as models_router, get_model_registry
 from backend.app.api.tasks import router as tasks_router
 from backend.app.api.knowledge import router as knowledge_router
+from backend.app.api.code import router as code_router
 from backend.app.core.config import settings
 from backend.app.core.logging import setup_logging
 from backend.app.persistence.db import init_db
@@ -25,10 +26,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
     logger.info(f"Starting {settings.app.name} v{settings.app.version} in {settings.app.environment} mode")
     
-    # Ensure data directories exist
+    # Ensure data and sandbox directories exist
     root = settings.paths.data_dir
     root.mkdir(parents=True, exist_ok=True)
     Path(settings.rag.chroma.persist_directory).mkdir(parents=True, exist_ok=True)
+    (root / "sandbox").mkdir(parents=True, exist_ok=True)
     
     # Initialize SQLite database schema
     init_db()
@@ -62,6 +64,7 @@ def create_app() -> FastAPI:
     app_instance.include_router(models_router)
     app_instance.include_router(tasks_router)
     app_instance.include_router(knowledge_router)
+    app_instance.include_router(code_router)
 
     return app_instance
 

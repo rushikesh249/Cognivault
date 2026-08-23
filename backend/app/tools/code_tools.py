@@ -1,14 +1,18 @@
-﻿"""Code Execution and Test Runner Tool Contracts (TRD Section 12, Table 31, ADR-008).
+﻿"""Code Execution and Test Runner Tool Implementations (TRD Section 12, Section 20, Table 31, ADR-008).
 
-SECURITY NOTICE: In Phase 5, these tools provide typed schema validation and contract enforcement.
-Direct host execution is strictly prohibited under all conditions.
-Real isolated execution in the Docker sandbox container is implemented exclusively in Phase 6.
+Executes code and test commands in the isolated sovereign-sandbox Docker container.
+Strictly adheres to:
+- Zero host code execution fallback under all conditions.
+- Docker daemon failure raises 503-equivalent ToolError.
 """
 
 import logging
+from typing import Optional
 from pydantic import BaseModel, Field
 
-from backend.app.tools.base import BaseTool, ToolContext, ToolMetadata
+from backend.app.sandbox.docker_runner import DockerRunner, ServiceUnavailableError, get_docker_runner
+from backend.app.sandbox.sandbox_spec import SandboxSpec
+from backend.app.tools.base import BaseTool, ToolContext, ToolError, ToolMetadata
 
 logger = logging.getLogger("sovereign_workbench.tools.code")
 
@@ -18,7 +22,7 @@ logger = logging.getLogger("sovereign_workbench.tools.code")
 # ==============================================================================
 
 class ExecuteCodeInput(BaseModel):
-    language: str = Field(..., description="Target programming language (e.g. python)")
+    language: str = Field(default="python", description="Target programming language (e.g. python)")
     code: str = Field(..., min_length=1, description="Source code to execute in sandbox")
 
 
@@ -29,7 +33,15 @@ class ExecuteCodeOutput(BaseModel):
 
 
 class ExecuteCodeTool(BaseTool):
-    """Tool contract for running code in isolated Docker sandbox (TRD Table 31)."""
+    """Tool for running code in isolated Docker sandbox (TRD Table 31)."""
+
+    def __init__(self, runner: Optional[DockerRunner] = None):
+        self._runner = runner
+
+    def _get_runner(self) -> DockerRunner:
+        if self._runner is None:
+            self._runner = get_docker_runner()
+        return self._runner
 
     @property
     def metadata(self) -> ToolMetadata:
@@ -45,13 +57,26 @@ class ExecuteCodeTool(BaseTool):
         )
 
     def execute(self, input_data: ExecuteCodeInput, ctx: ToolContext) -> ExecuteCodeOutput:
-        # Phase 5 typed scaffold: strictly non-executing (Docker sandbox is Phase 6)
-        logger.info(f"execute_code contract called for task '{ctx.task_id}' (language: {input_data.language})")
-        return ExecuteCodeOutput(
-            stdout="[Phase 5 Typed Stub: Docker sandbox container execution deferred to Phase 6]",
-            stderr="",
-            exit_code=0,
+        runner = self._get_runner()
+        spec = SandboxSpec(
+            task_id=ctx.task_id,
+            code=input_data.code,
+            language=input_data.language,
+            timeout_s=30,
+            workspace_dir=ctx.workspace_dir,
         )
+
+        try:
+            res = runner.run(spec)
+            return ExecuteCodeOutput(
+                stdout=res.stdout,
+                stderr=res.stderr,
+                exit_code=res.exit_code,
+            )
+        except ServiceUnavailableError as sue:
+            raise ToolError(f"503 ServiceUnavailable: {sue}") from sue
+        except Exception as e:
+            raise ToolError(f"Code execution error: {e}") from e
 
 
 # ==============================================================================
@@ -70,7 +95,15 @@ class RunTestsOutput(BaseModel):
 
 
 class RunTestsTool(BaseTool):
-    """Tool contract for running tests in isolated Docker sandbox (TRD Table 31)."""
+    """Tool for running tests in isolated Docker sandbox (TRD Table 31)."""
+
+    def __init__(self, runner: Optional[DockerRunner] = None):
+        self._runner = runner
+
+    def _get_runner(self) -> DockerRunner:
+        if self._runner is None:
+            self._runner = get_docker_runner()
+        return self._runner
 
     @property
     def metadata(self) -> ToolMetadata:
@@ -86,11 +119,23 @@ class RunTestsTool(BaseTool):
         )
 
     def execute(self, input_data: RunTestsInput, ctx: ToolContext) -> RunTestsOutput:
-        # Phase 5 typed scaffold: strictly non-executing (Docker sandbox is Phase 6)
-        logger.info(f"run_tests contract called for task '{ctx.task_id}' (cmd: {input_data.test_command})")
-        return RunTestsOutput(
-            stdout="[Phase 5 Typed Stub: Docker sandbox container test execution deferred to Phase 6]",
-            stderr="",
-            exit_code=0,
-            passed=True,
+        runner = self._get_runner()
+        spec = SandboxSpec(
+            task_id=ctx.task_id,
+            test_command=input_data.test_command,
+            timeout_s=30,
+            workspace_dir=ctx.workspace_dir,
         )
+
+        try:
+            res = runner.run(spec)
+            return RunTestsOutput(
+                stdout=res.stdout,
+                stderr=res.stderr,
+                exit_code=res.exit_code,
+                passed=(res.exit_code == 0),
+            )
+        except ServiceUnavailableError as sue:
+            raise ToolError(f"503 ServiceUnavailable: {sue}") from sue
+        except Exception as e:
+            raise ToolError(f"Test execution error: {e}") from e

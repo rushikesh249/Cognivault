@@ -50,3 +50,11 @@ rag:
   chroma:
     persist_directory: data/chroma
     anonymized_telemetry: false
+sandbox:
+  image_name: sovereign-sandbox:latest
+  cpu_limit: 1.0
+  memory_limit: 512m
+  timeout_s: 30
+  network: none
+  pids_limit: 64
+  max_output_bytes: 1048576

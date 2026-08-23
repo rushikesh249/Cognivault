@@ -95,12 +95,24 @@ class RAGSettings(BaseModel):
     chroma: ChromaSettings = Field(default_factory=ChromaSettings)
 
 
+class SandboxSettings(BaseModel):
+    """Docker Sandbox execution parameters (TRD Section 20, Section 23, ADR-008)."""
+    image_name: str = Field(default="sovereign-sandbox:latest", description="Sandbox Docker image tag")
+    cpu_limit: float = Field(default=1.0, ge=0.1, le=4.0, description="Max CPU cores per container")
+    memory_limit: str = Field(default="512m", description="Max memory per container")
+    timeout_s: int = Field(default=30, ge=1, le=120, description="Default execution timeout in seconds")
+    network: str = Field(default="none", description="Container network isolation mode (must be 'none')")
+    pids_limit: int = Field(default=64, description="Max process limit inside container")
+    max_output_bytes: int = Field(default=1048576, description="Max bytes to capture for stdout/stderr (1 MB)")
+
+
 class Settings(BaseModel):
     app: AppInfo = Field(default_factory=AppInfo)
     paths: AppPaths = Field(default_factory=AppPaths)
     ollama: OllamaSettings = Field(default_factory=OllamaSettings)
     routing: RoutingSettings = Field(default_factory=RoutingSettings)
     rag: RAGSettings = Field(default_factory=RAGSettings)
+    sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
 
 
 def get_project_root() -> Path:

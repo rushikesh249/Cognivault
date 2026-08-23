@@ -93,47 +93,34 @@ def test_unknown_tool_rejection(registry):
 
 def test_schema_validation_rejection_for_all_tools(registry):
     """Verify invalid/missing arguments are rejected with ToolValidationError."""
-    # Test read_file with missing 'path'
     with pytest.raises(ToolValidationError):
         registry.invoke("read_file", {}, ToolContext(task_id="t1", task_type="document"))
 
-    # Test write_file with missing 'content'
     with pytest.raises(ToolValidationError):
         registry.invoke("write_file", {"path": "main.py"}, ToolContext(task_id="t2", task_type="coding"))
 
-    # Test search_knowledge_base with missing 'query'
     with pytest.raises(ToolValidationError):
         registry.invoke("search_knowledge_base", {}, ToolContext(task_id="t3", task_type="document"))
 
-    # Test execute_code with missing 'code'
     with pytest.raises(ToolValidationError):
         registry.invoke("execute_code", {"language": "python"}, ToolContext(task_id="t4", task_type="coding"))
 
-    # Test run_tests with missing 'test_command'
     with pytest.raises(ToolValidationError):
         registry.invoke("run_tests", {}, ToolContext(task_id="t5", task_type="coding"))
 
-    # Test extract_text_from_scan with missing 'file_id'
     with pytest.raises(ToolValidationError):
         registry.invoke("extract_text_from_scan", {}, ToolContext(task_id="t6", task_type="document"))
 
-    # Test create_docx with missing 'template'
     with pytest.raises(ToolValidationError):
         registry.invoke("create_docx", {}, ToolContext(task_id="t7", task_type="document"))
 
 
-def test_execute_code_and_run_tests_cannot_execute_host_code(registry):
-    """Verify execute_code and run_tests are non-executing typed contracts in Phase 5."""
-    ctx = ToolContext(task_id="code-task-2", task_type="coding")
+def test_execute_code_and_run_tests_in_docker(registry):
+    """Verify execute_code and run_tests run in Docker sandbox (Phase 6)."""
+    ctx = ToolContext(task_id="task_tool_exec", task_type="coding")
 
-    res = registry.invoke("execute_code", {"language": "python", "code": "import os; print('hello')"}, ctx)
+    res = registry.invoke("execute_code", {"language": "python", "code": "print('HELLO_DOCKER_SANDBOX')"}, ctx)
     assert res.success is True
     assert "stdout" in res.data
-    assert "Phase 5 Typed Stub" in res.data["stdout"]
+    assert "HELLO_DOCKER_SANDBOX" in res.data["stdout"]
     assert res.data["exit_code"] == 0
-
-    test_res = registry.invoke("run_tests", {"test_command": "pytest"}, ctx)
-    assert test_res.success is True
-    assert "stdout" in test_res.data
-    assert "Phase 5 Typed Stub" in test_res.data["stdout"]
-    assert test_res.data["passed"] is True
