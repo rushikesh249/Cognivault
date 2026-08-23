@@ -63,3 +63,12 @@ agent:
     document: 4
     coding: 6
     vision: 3
+ocr:
+  dpi: 300
+  confidence_threshold: 0.6
+upload:
+  max_upload_bytes: 10485760
+  allowed_mime_types:
+  - application/pdf
+  - image/jpeg
+  - image/png

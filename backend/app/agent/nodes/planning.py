@@ -1,4 +1,4 @@
-﻿"""Stage 2: Planning Node (TRD Section 11.3, Table 30, ADR-005)."""
+﻿"""Stage 2: Planning Node (TRD Section 11.3, Table 30, Table 44, ADR-005)."""
 
 import logging
 from typing import Any, Dict, List
@@ -9,12 +9,13 @@ logger = logging.getLogger("sovereign_workbench.agent.node.planning")
 
 
 def generate_default_plan(task_type: str, goal: str) -> List[str]:
-    """Generate default execution plan based on task_type and goal."""
+    """Generate default execution plan based on task_type and goal (TRD Table 44)."""
     if task_type == "document":
         return [
-            "Search knowledge base for relevant compliance standards",
-            "Evaluate document findings against retrieved guidelines",
-            "Synthesize final approval summary",
+            "Extract findings and anomalies from inspection report",
+            "Search safety standards and guidelines in knowledge base",
+            "Evaluate compliance gaps against safety clauses",
+            "Generate technical Approval Note DOCX artifact",
         ]
     elif task_type == "coding":
         return [

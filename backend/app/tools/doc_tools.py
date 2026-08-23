@@ -1,14 +1,14 @@
-﻿"""Document Generation Tool Contracts (TRD Section 12, Table 31).
+﻿"""Document Generation Tool Implementations (TRD Section 12, Table 31, Component #17)."""
 
-Phase 5 typed contracts and schemas. Real artifact generators arrive in Phase 8/12.
-"""
-
-from typing import Any, Dict
 import logging
 import uuid
+from typing import Any, Dict
 from pydantic import BaseModel, Field
 
-from backend.app.tools.base import BaseTool, ToolContext, ToolMetadata
+from backend.app.documents.doc_generator import DocumentGenerationError, get_doc_generator
+from backend.app.persistence.artifact_repository import ArtifactRepository
+from backend.app.persistence.db import get_db_context
+from backend.app.tools.base import BaseTool, ToolContext, ToolError, ToolMetadata
 
 logger = logging.getLogger("sovereign_workbench.tools.doc")
 
@@ -23,7 +23,7 @@ class DocGenOutput(BaseModel):
 
 
 class CreateDocxTool(BaseTool):
-    """Tool contract for generating DOCX approval notes and reports (TRD Table 31)."""
+    """Tool for generating DOCX approval notes and reports (TRD Table 31, Section 22)."""
 
     @property
     def metadata(self) -> ToolMetadata:
@@ -39,9 +39,42 @@ class CreateDocxTool(BaseTool):
         )
 
     def execute(self, input_data: DocGenInput, ctx: ToolContext) -> DocGenOutput:
-        art_id = str(uuid.uuid4())
-        logger.info(f"create_docx contract called for task '{ctx.task_id}' (template: {input_data.template})")
-        return DocGenOutput(artifact_id=art_id)
+        logger.info(f"Executing create_docx for task '{ctx.task_id}' (template: {input_data.template})")
+        
+        doc_gen = get_doc_generator()
+        task_id = ctx.task_id
+        
+        # Inject task_id into payload if missing
+        payload = dict(input_data.data)
+        payload.setdefault("task_id", task_id)
+        
+        try:
+            output_path, artifact_id = doc_gen.render(
+                kind="docx",
+                data=payload,
+            )
+            
+            # Register in SQLite artifacts table (TRD Section 10.5)
+            sources = payload.get("citations", [])
+            title = payload.get("title", "Technical Approval Note: Equipment Inspection")
+            
+            with get_db_context() as session:
+                repo = ArtifactRepository(session)
+                repo.create(
+                    task_id=task_id,
+                    kind="docx",
+                    title=title,
+                    storage_path=str(output_path),
+                    sources=sources,
+                    artifact_id=artifact_id,
+                )
+                
+            return DocGenOutput(artifact_id=artifact_id)
+        except DocumentGenerationError as dge:
+            raise ToolError(str(dge)) from dge
+        except Exception as e:
+            logger.error(f"create_docx failed for task '{task_id}': {e}", exc_info=True)
+            raise ToolError(f"Failed to generate DOCX document: {e}") from e
 
 
 class CreateXlsxTool(BaseTool):

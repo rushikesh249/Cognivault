@@ -30,6 +30,8 @@ class TaskORM(Base):
     updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now, nullable=False)
 
     events = relationship("TaskEventORM", back_populates="task", cascade="all, delete-orphan")
+    files = relationship("FileORM", back_populates="task", cascade="all, delete-orphan")
+    artifacts = relationship("ArtifactORM", back_populates="task", cascade="all, delete-orphan")
 
 
 class TaskEventORM(Base):
@@ -46,17 +48,20 @@ class TaskEventORM(Base):
     task = relationship("TaskORM", back_populates="events")
 
 
-class ModelRegistryMetaORM(Base):
-    """Model Registry availability cache table (TRD Section 10.6, Table 26, ADR-003)."""
-    __tablename__ = "model_registry_meta"
+class FileORM(Base):
+    """Uploaded files table (TRD Section 10.3, Table 23)."""
+    __tablename__ = "files"
 
-    model_id = Column(String(128), primary_key=True)
-    role = Column(String(32), nullable=False)
-    display_name = Column(String(255), nullable=True)
-    vram_gb = Column(Float, nullable=True)
-    enabled = Column(Boolean, nullable=False, default=True)
-    last_probe_at = Column(DateTime, nullable=True)
-    last_available = Column(Boolean, nullable=True)
+    file_id = Column(String(36), primary_key=True, default=generate_uuid)
+    task_id = Column(String(36), ForeignKey("tasks.task_id", ondelete="SET NULL"), nullable=True, index=True)
+    filename = Column(String(255), nullable=False)
+    mime_type = Column(String(128), nullable=False)
+    pages = Column(Integer, nullable=True)
+    size_bytes = Column(Integer, nullable=False)
+    storage_path = Column(String(512), nullable=False)
+    uploaded_at = Column(DateTime, default=get_utc_now, nullable=False)
+
+    task = relationship("TaskORM", back_populates="files")
 
 
 class KnowledgeDocumentORM(Base):
@@ -69,3 +74,31 @@ class KnowledgeDocumentORM(Base):
     source_path = Column(String(512), nullable=False)
     indexed_at = Column(DateTime, nullable=True)
     chunk_count = Column(Integer, nullable=False, default=0)
+
+
+class ArtifactORM(Base):
+    """Generated artifacts metadata table (TRD Section 10.5, Table 25)."""
+    __tablename__ = "artifacts"
+
+    artifact_id = Column(String(36), primary_key=True, default=generate_uuid)
+    task_id = Column(String(36), ForeignKey("tasks.task_id", ondelete="CASCADE"), nullable=False, index=True)
+    kind = Column(String(32), nullable=False)  # CHECK IN ('docx', 'xlsx', 'pptx', 'pdf', 'code')
+    title = Column(String(255), nullable=False)
+    storage_path = Column(String(512), nullable=False)
+    sources_json = Column(Text, nullable=False, default="[]")  # JSON list of citations
+    created_at = Column(DateTime, default=get_utc_now, nullable=False)
+
+    task = relationship("TaskORM", back_populates="artifacts")
+
+
+class ModelRegistryMetaORM(Base):
+    """Model Registry availability cache table (TRD Section 10.6, Table 26, ADR-003)."""
+    __tablename__ = "model_registry_meta"
+
+    model_id = Column(String(128), primary_key=True)
+    role = Column(String(32), nullable=False)
+    display_name = Column(String(255), nullable=True)
+    vram_gb = Column(Float, nullable=True)
+    enabled = Column(Boolean, nullable=False, default=True)
+    last_probe_at = Column(DateTime, nullable=True)
+    last_available = Column(Boolean, nullable=True)

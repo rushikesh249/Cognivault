@@ -118,6 +118,21 @@ class AgentSettings(BaseModel):
     )
 
 
+class OCRSettings(BaseModel):
+    """OCR Service configuration (TRD Section 17, Section 30)."""
+    dpi: int = Field(default=300, ge=72, le=600, description="Rasterization DPI for scanned page rendering")
+    confidence_threshold: float = Field(default=0.6, ge=0.0, le=1.0, description="Threshold below which OCR page is flagged low confidence")
+
+
+class UploadSettings(BaseModel):
+    """File upload limits and validation (TRD Table 11)."""
+    max_upload_bytes: int = Field(default=10485760, description="Max allowed upload file size (10 MB)")
+    allowed_mime_types: List[str] = Field(
+        default_factory=lambda: ["application/pdf", "image/jpeg", "image/png"],
+        description="Permitted MIME types for upload",
+    )
+
+
 class Settings(BaseModel):
     app: AppInfo = Field(default_factory=AppInfo)
     paths: AppPaths = Field(default_factory=AppPaths)
@@ -126,6 +141,8 @@ class Settings(BaseModel):
     rag: RAGSettings = Field(default_factory=RAGSettings)
     sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
     agent: AgentSettings = Field(default_factory=AgentSettings)
+    ocr: OCRSettings = Field(default_factory=OCRSettings)
+    upload: UploadSettings = Field(default_factory=UploadSettings)
 
 
 def get_project_root() -> Path:

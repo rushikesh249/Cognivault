@@ -16,6 +16,8 @@ from backend.app.api.knowledge import router as knowledge_router
 from backend.app.api.code import router as code_router
 from backend.app.api.agent import router as agent_router
 from backend.app.api.events import router as events_router
+from backend.app.api.files import router as files_router
+from backend.app.api.artifacts import router as artifacts_router
 from backend.app.core.config import settings
 from backend.app.core.logging import setup_logging
 from backend.app.persistence.db import init_db
@@ -28,9 +30,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
     logger.info(f"Starting {settings.app.name} v{settings.app.version} in {settings.app.environment} mode")
     
-    # Ensure data and sandbox directories exist
+    # Ensure data, uploads, outputs, and sandbox directories exist
     root = settings.paths.data_dir
     root.mkdir(parents=True, exist_ok=True)
+    settings.paths.uploads_dir.mkdir(parents=True, exist_ok=True)
+    settings.paths.outputs_dir.mkdir(parents=True, exist_ok=True)
     Path(settings.rag.chroma.persist_directory).mkdir(parents=True, exist_ok=True)
     (root / "sandbox").mkdir(parents=True, exist_ok=True)
     
@@ -69,6 +73,8 @@ def create_app() -> FastAPI:
     app_instance.include_router(code_router)
     app_instance.include_router(agent_router)
     app_instance.include_router(events_router)
+    app_instance.include_router(files_router)
+    app_instance.include_router(artifacts_router)
 
     return app_instance
 

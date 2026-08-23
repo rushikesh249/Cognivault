@@ -3,9 +3,9 @@
 from abc import ABC, abstractmethod
 import hashlib
 import logging
-import math
 from pathlib import Path
 from typing import List, Optional
+import numpy as np
 
 from backend.app.core.config import settings
 
@@ -42,9 +42,12 @@ class BaseEmbeddingService(ABC):
 class DeterministicTestEmbeddingService(BaseEmbeddingService):
     """Deterministic, offline test embedding service that does not require model downloads.
     
-    Generates 384-dimensional unit vectors based on feature hashing of character/word n-grams,
-    ensuring that semantically similar texts have high cosine similarity while remaining
+    Generates 384-dimensional unit vectors based on calibrated dense word projections,
+    ensuring semantically similar texts have higher cosine similarity while remaining
     completely deterministic, offline, and lightweight.
+    
+    NOTE: This is a test/development embedding. For production quality retrieval,
+    provision the BGE model weights locally.
     """
 
     def __init__(self, dimension: int = 384):
@@ -58,31 +61,21 @@ class DeterministicTestEmbeddingService(BaseEmbeddingService):
         if not text or not text.strip():
             return [0.0] * self._dimension
 
-        vec = [0.0] * self._dimension
-        words = text.lower().strip().split()
-        
-        # Word-level and character tri-gram feature hashing
-        for word in words:
-            # Word feature
-            h = int(hashlib.md5(word.encode("utf-8")).hexdigest(), 16)
-            idx = h % self._dimension
-            sign = 1.0 if ((h >> 8) & 1) else -1.0
-            vec[idx] += sign * 1.5
+        words = text.lower().strip().replace("-", " ").replace("_", " ").split()
+        vec = np.zeros(self._dimension, dtype=np.float32)
+        stop_words = {"and", "the", "is", "in", "at", "of", "a", "to", "for", "with", "on", "this", "that", "by"}
 
-            # Subword character tri-grams
-            if len(word) >= 3:
-                for i in range(len(word) - 2):
-                    trigram = word[i:i+3]
-                    th = int(hashlib.md5(trigram.encode("utf-8")).hexdigest(), 16)
-                    t_idx = th % self._dimension
-                    t_sign = 1.0 if ((th >> 8) & 1) else -1.0
-                    vec[t_idx] += t_sign * 0.5
+        unique_words = set(w for w in words if w not in stop_words and len(w) > 2)
+        for w in unique_words:
+            seed = int(hashlib.md5(w.encode("utf-8")).hexdigest()[:8], 16)
+            rng = np.random.RandomState(seed)
+            w_vec = rng.randn(self._dimension).astype(np.float32)
+            vec += (w_vec / (np.linalg.norm(w_vec) + 1e-9)) * 2.0
 
-        # L2 normalize vector
-        norm = math.sqrt(sum(x * x for x in vec))
+        norm = np.linalg.norm(vec)
         if norm > 1e-9:
-            vec = [x / norm for x in vec]
-        return vec
+            vec /= norm
+        return vec.tolist()
 
     def embed_texts(self, texts: List[str]) -> List[List[float]]:
         return [self._text_to_vector(t) for t in texts]

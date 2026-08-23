@@ -1,9 +1,10 @@
-﻿"""Stage 8: Final Deliverable Terminal Node (TRD Section 11.3, Table 30)."""
+﻿"""Stage 8: Final Deliverable Terminal Node (TRD Section 11.3, Table 30, Table 44)."""
 
 import logging
 from typing import Any, Dict
 from backend.app.agent.event_broadcaster import get_event_broadcaster
 from backend.app.agent.state import AgentState
+from backend.app.persistence.artifact_repository import ArtifactRepository
 from backend.app.persistence.db import get_db_context
 from backend.app.persistence.task_repository import TaskRepository
 
@@ -15,8 +16,9 @@ def final_deliverable_node(state: AgentState) -> Dict[str, Any]:
     task_id = state["task_id"]
     status = state.get("status", "succeeded")
     model_used = state.get("selected_model_id")
+    artifact_id = state.get("final_artifact_id")
 
-    logger.info(f"[{task_id}] Finalizing Deliverable with status '{status}'")
+    logger.info(f"[{task_id}] Finalizing Deliverable with status '{status}' (artifact: {artifact_id})")
     
     # Synchronously update task status in database
     try:
@@ -27,6 +29,13 @@ def final_deliverable_node(state: AgentState) -> Dict[str, Any]:
                 status=status,
                 model_used=model_used,
             )
+            
+            # If artifact was created, verify it in database
+            if not artifact_id:
+                art_repo = ArtifactRepository(session)
+                arts = art_repo.list_by_task_id(task_id)
+                if arts:
+                    artifact_id = arts[-1].artifact_id
     except Exception as e:
         logger.error(f"[{task_id}] Failed to persist final task status: {e}", exc_info=True)
 
@@ -34,8 +43,8 @@ def final_deliverable_node(state: AgentState) -> Dict[str, Any]:
     broadcaster.log_and_emit(
         task_id=task_id,
         node="final_deliverable",
-        message=f"Agent workflow complete with status='{status}'.",
+        message=f"Agent workflow complete with status='{status}'." + (f" Artifact: {artifact_id}" if artifact_id else ""),
         level="info" if status == "succeeded" else "warn",
     )
 
-    return {"status": status}
+    return {"status": status, "final_artifact_id": artifact_id}
