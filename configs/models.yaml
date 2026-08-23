@@ -1,0 +1,4 @@
+# Model Registry Configuration (TRD Sec 13)
+# Note: Models will be populated and probed on the GPU demo machine.
+# No model weights are downloaded during Phase 0.
+models: []
