@@ -1,4 +1,35 @@
-# Model Registry Configuration (TRD Sec 13)
-# Note: Models will be populated and probed on the GPU demo machine.
-# No model weights are downloaded during Phase 0.
-models: []
+# configs/models.yaml
+# Single source of truth for local open-weight models (TRD §13, ADR-003)
+models:
+  - model_id: local-general-model
+    display_name: "General Reasoning (quantized)"
+    role: general
+    capabilities: [reasoning, document_analysis, planning]
+    modalities: [text]
+    context_length: 8192
+    vram_gb: 5.5
+    serving_backend: ollama
+    model_path: "ollama://qwen2.5:7b-instruct-q4_K_M"
+    enabled: true
+
+  - model_id: local-coding-model
+    display_name: "Coding Assistant (quantized)"
+    role: coding
+    capabilities: [coding, debugging, testing]
+    modalities: [text]
+    context_length: 8192
+    vram_gb: 5.5
+    serving_backend: ollama
+    model_path: "ollama://qwen2.5-coder:7b-instruct-q4_K_M"
+    enabled: true
+
+  - model_id: local-vision-model
+    display_name: "Vision-Language (quantized)"
+    role: vision
+    capabilities: [image_analysis, document_vision]
+    modalities: [text, image]
+    context_length: 4096
+    vram_gb: 6.0
+    serving_backend: ollama
+    model_path: "ollama://llava:7b-q4_K_M"
+    enabled: true

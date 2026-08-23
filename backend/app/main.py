@@ -6,8 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.health import router as health_router
 from backend.app.api.models import router as models_router, get_model_registry
+from backend.app.api.tasks import router as tasks_router
 from backend.app.core.config import settings
 from backend.app.core.logging import setup_logging
+from backend.app.persistence.db import init_db
 
 logger = logging.getLogger("sovereign_workbench.main")
 
@@ -20,6 +22,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Ensure data directory exists
     root = settings.paths.data_dir
     root.mkdir(parents=True, exist_ok=True)
+    
+    # Initialize SQLite database schema
+    init_db()
     
     # Initialize / validate Model Registry
     registry = get_model_registry()
@@ -48,6 +53,7 @@ def create_app() -> FastAPI:
     # Mount API routers
     app_instance.include_router(health_router)
     app_instance.include_router(models_router)
+    app_instance.include_router(tasks_router)
 
     return app_instance
 
