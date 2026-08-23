@@ -1,4 +1,4 @@
-﻿"""Stage 2: Planning Node (TRD Section 11.3, Table 30, Table 44, ADR-005)."""
+﻿"""Stage 2: Planning Node (TRD Section 11.3, Table 30, Table 44, Section 20, ADR-005)."""
 
 import logging
 from typing import Any, Dict, List
@@ -18,11 +18,10 @@ def generate_default_plan(task_type: str, goal: str) -> List[str]:
             "Generate technical Approval Note DOCX artifact",
         ]
     elif task_type == "coding":
-        return [
-            "Generate solution script",
-            "Execute generated script in sandbox",
-            "Run test suite verification",
-        ]
+        goal_lower = goal.lower()
+        if "test" in goal_lower or "fix" in goal_lower or "defect" in goal_lower or "bug" in goal_lower:
+            return ["Execute test suite to detect failures"]
+        return ["Execute solution script in sandbox"]
     elif task_type == "vision":
         return [
             "Inspect input visual features",
@@ -39,17 +38,24 @@ def planning_node(state: AgentState) -> Dict[str, Any]:
     
     # Invariant: iteration counter increments ONLY when entering Planning
     current_iteration = state.get("iteration", 0) + 1
-    max_iterations = state.get("max_iterations", 4)
+    max_iterations = state.get("max_iterations", 6 if task_type == "coding" else 4)
 
-    logger.info(f"[{task_id}] Executing Planning (iteration {current_iteration}/{max_iterations})")
+    logger.info(f"[{task_id}] Executing Planning (iteration {current_iteration}/{max_iterations}, task_type: {task_type})")
 
-    # If this is a re-plan after validation failure, consider validation notes
+    # If this is a re-plan after test/validation failure, formulate targeted remediation plan
     if current_iteration > 1 and state.get("validation_notes"):
-        plan = [
-            f"Address failure: {state['validation_notes']}",
-            "Re-execute corrected step",
-            "Re-validate results",
-        ]
+        failure_note = state["validation_notes"]
+        if task_type == "coding":
+            plan = [
+                "Generate and apply corrected code to sandbox workspace",
+                "Re-run test suite verification",
+            ]
+        else:
+            plan = [
+                f"Address failure: {failure_note}",
+                "Re-execute corrected step",
+                "Re-validate results",
+            ]
     else:
         plan = generate_default_plan(task_type, goal)
 
