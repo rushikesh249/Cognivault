@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class AppInfo(BaseModel):
@@ -33,12 +33,39 @@ class OllamaSettings(BaseModel):
         return f"http://{self.host}:{self.port}"
 
 
+class TaskRequirementConfig(BaseModel):
+    """Declarative requirement mapping for a specific task_type (TRD §14.1, Table 34)."""
+    preferred_role: str = Field(..., description="Preferred model role for this task type")
+    capabilities: List[str] = Field(default_factory=list, description="Required model capability subset")
+    modality: str = Field(default="text", description="Input modality required (text, image)")
+
+    @field_validator("preferred_role", "modality")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Field must not be empty")
+        return v.strip()
+
+
 class RoutingSettings(BaseModel):
-    task_role_mapping: Dict[str, str] = Field(
+    """Authoritative declarative routing configuration (TRD §14.1)."""
+    task_requirements: Dict[str, TaskRequirementConfig] = Field(
         default_factory=lambda: {
-            "document": "general",
-            "coding": "coding",
-            "vision": "vision",
+            "document": TaskRequirementConfig(
+                preferred_role="general",
+                capabilities=["reasoning", "document_analysis"],
+                modality="text",
+            ),
+            "coding": TaskRequirementConfig(
+                preferred_role="coding",
+                capabilities=["coding", "debugging", "testing"],
+                modality="text",
+            ),
+            "vision": TaskRequirementConfig(
+                preferred_role="vision",
+                capabilities=["image_analysis"],
+                modality="image",
+            ),
         }
     )
 
@@ -66,8 +93,8 @@ def load_settings(config_path: Optional[Path] = None) -> Settings:
         with open(config_path, "r", encoding="utf-8") as f:
             data: Dict[str, Any] = yaml.safe_load(f) or {}
         return Settings(**data)
-    except Exception:
-        return Settings()
+    except Exception as e:
+        raise RuntimeError(f"Failed to load application settings from {config_path}: {e}") from e
 
 
 settings = load_settings()

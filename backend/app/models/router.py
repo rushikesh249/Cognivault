@@ -3,6 +3,7 @@
 import logging
 from typing import List, Optional
 
+from backend.app.core.config import RoutingSettings, settings
 from backend.app.models.exceptions import ModelUnavailable
 from backend.app.models.model_registry import ModelRegistry
 from backend.app.models.provider import ModelProvider
@@ -12,7 +13,56 @@ logger = logging.getLogger("sovereign_workbench.models.router")
 
 
 class ModelRouter:
-    """Deterministic, capability-matching model router with hardware fallback support."""
+    """
+    Deterministic, capability-matching model router with hardware fallback support.
+    Routing decisions are configuration-driven, not hardcoded if/else code branches (TRD §14.1).
+    """
+
+    @classmethod
+    def get_requirement_for_task_type(
+        cls,
+        task_type: str,
+        routing_settings: Optional[RoutingSettings] = None,
+    ) -> TaskRequirement:
+        """
+        Resolve TaskRequirement from declarative configuration (TRD §14.1, Table 34).
+        Adding a new task type is a configuration change, not a code branch.
+        """
+        cfg = routing_settings or settings.routing
+        if task_type not in cfg.task_requirements:
+            valid_types = list(cfg.task_requirements.keys())
+            raise ValueError(
+                f"Unknown task_type '{task_type}' in declarative routing configuration. "
+                f"Configured task types: {valid_types}"
+            )
+
+        req_config = cfg.task_requirements[task_type]
+        return TaskRequirement(
+            task_type=task_type,
+            preferred_role=req_config.preferred_role,
+            modality=req_config.modality,
+            capabilities=list(req_config.capabilities),
+        )
+
+    @classmethod
+    def select_for_task_type(
+        cls,
+        task_type: str,
+        registry: ModelRegistry,
+        provider: Optional[ModelProvider] = None,
+        enforce_availability: bool = True,
+        routing_settings: Optional[RoutingSettings] = None,
+    ) -> str:
+        """
+        Convenience method to resolve declarative requirement and select model_id (TRD §14).
+        """
+        requirement = cls.get_requirement_for_task_type(task_type, routing_settings=routing_settings)
+        return cls.select(
+            requirement=requirement,
+            registry=registry,
+            provider=provider,
+            enforce_availability=enforce_availability,
+        )
 
     @classmethod
     def select(
@@ -27,7 +77,7 @@ class ModelRouter:
         1. Filter enabled candidates matching modality and capabilities subset.
         2. Filter by hardware constraints (max_vram_gb, max_context_needed).
         3. Filter by provider availability if provider given and enforce_availability=True.
-        4. Sort deterministically: exact preferred_role match first, then context_length.
+        4. Sort deterministically: exact preferred_role match first, then narrowest context_length.
         5. If empty, invoke fallback_chain().
         """
         req_capabilities = set(requirement.capabilities)
