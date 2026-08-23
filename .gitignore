@@ -10,18 +10,18 @@ frontend/dist/
 .env
 .env.*
 
-models/
+/models/
 *.gguf
 *.safetensors
 
-data/
-knowledge_base/index/
+/data/
+/knowledge_base/index/
 *.db
 *.sqlite
 *.sqlite3
 
-sandbox/workspace/
-sandbox/tmp/
+/sandbox/workspace/
+/sandbox/tmp/
 generated/
 
 .vscode/

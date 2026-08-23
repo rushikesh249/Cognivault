@@ -12,3 +12,15 @@ paths:
   logs_dir: data/logs
   models_dir: models
   knowledge_base_dir: knowledge_base
+
+ollama:
+  host: "127.0.0.1"
+  port: 11434
+  timeout_s: 10.0
+  cache_ttl_s: 10.0
+
+routing:
+  task_role_mapping:
+    document: general
+    coding: coding
+    vision: vision

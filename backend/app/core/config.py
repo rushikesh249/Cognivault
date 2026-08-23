@@ -22,9 +22,32 @@ class AppPaths(BaseModel):
     knowledge_base_dir: Path = Path("knowledge_base")
 
 
+class OllamaSettings(BaseModel):
+    host: str = "127.0.0.1"
+    port: int = 11434
+    timeout_s: float = 10.0
+    cache_ttl_s: float = 10.0
+
+    @property
+    def base_url(self) -> str:
+        return f"http://{self.host}:{self.port}"
+
+
+class RoutingSettings(BaseModel):
+    task_role_mapping: Dict[str, str] = Field(
+        default_factory=lambda: {
+            "document": "general",
+            "coding": "coding",
+            "vision": "vision",
+        }
+    )
+
+
 class Settings(BaseModel):
     app: AppInfo = Field(default_factory=AppInfo)
     paths: AppPaths = Field(default_factory=AppPaths)
+    ollama: OllamaSettings = Field(default_factory=OllamaSettings)
+    routing: RoutingSettings = Field(default_factory=RoutingSettings)
 
 
 def get_project_root() -> Path:
