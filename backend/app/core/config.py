@@ -106,6 +106,18 @@ class SandboxSettings(BaseModel):
     max_output_bytes: int = Field(default=1048576, description="Max bytes to capture for stdout/stderr (1 MB)")
 
 
+class AgentSettings(BaseModel):
+    """LangGraph Agent configuration (TRD Section 11.4, ADR-005)."""
+    max_iterations: Dict[str, int] = Field(
+        default_factory=lambda: {
+            "document": 4,
+            "coding": 6,
+            "vision": 3,
+        },
+        description="Max iterations per task_type before bounded failure",
+    )
+
+
 class Settings(BaseModel):
     app: AppInfo = Field(default_factory=AppInfo)
     paths: AppPaths = Field(default_factory=AppPaths)
@@ -113,6 +125,7 @@ class Settings(BaseModel):
     routing: RoutingSettings = Field(default_factory=RoutingSettings)
     rag: RAGSettings = Field(default_factory=RAGSettings)
     sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
+    agent: AgentSettings = Field(default_factory=AgentSettings)
 
 
 def get_project_root() -> Path:

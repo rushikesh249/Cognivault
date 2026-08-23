@@ -58,3 +58,8 @@ sandbox:
   network: none
   pids_limit: 64
   max_output_bytes: 1048576
+agent:
+  max_iterations:
+    document: 4
+    coding: 6
+    vision: 3

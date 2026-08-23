@@ -14,6 +14,8 @@ from backend.app.api.models import router as models_router, get_model_registry
 from backend.app.api.tasks import router as tasks_router
 from backend.app.api.knowledge import router as knowledge_router
 from backend.app.api.code import router as code_router
+from backend.app.api.agent import router as agent_router
+from backend.app.api.events import router as events_router
 from backend.app.core.config import settings
 from backend.app.core.logging import setup_logging
 from backend.app.persistence.db import init_db
@@ -65,6 +67,8 @@ def create_app() -> FastAPI:
     app_instance.include_router(tasks_router)
     app_instance.include_router(knowledge_router)
     app_instance.include_router(code_router)
+    app_instance.include_router(agent_router)
+    app_instance.include_router(events_router)
 
     return app_instance
 
