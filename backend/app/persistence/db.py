@@ -1,5 +1,6 @@
-"""SQLite Database Connection and Session Management (TRD §10, ADR-007)."""
+﻿"""SQLite Database Connection and Session Management (TRD Section 10, ADR-007)."""
 
+from contextlib import contextmanager
 import logging
 from pathlib import Path
 from typing import Generator, Optional
@@ -35,7 +36,6 @@ def get_engine(db_path: Optional[Path] = None):
             echo=False,
         )
 
-        # Enable WAL mode and foreign keys for SQLite (TRD §10, §10.8)
         @event.listens_for(eng, "connect")
         def set_sqlite_pragma(dbapi_connection, connection_record):
             cursor = dbapi_connection.cursor()
@@ -80,5 +80,20 @@ def get_db() -> Generator[Session, None, None]:
     session: Session = factory()
     try:
         yield session
+    finally:
+        session.close()
+
+
+@contextmanager
+def get_db_context(db_path: Optional[Path] = None) -> Generator[Session, None, None]:
+    """Context manager for standalone script and background task database access."""
+    factory = get_session_factory(db_path)
+    session: Session = factory()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
     finally:
         session.close()

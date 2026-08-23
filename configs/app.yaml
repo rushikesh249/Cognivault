@@ -4,7 +4,6 @@ app:
   environment: development
   host: 0.0.0.0
   port: 8000
-
 paths:
   data_dir: data
   uploads_dir: data/uploads
@@ -12,24 +11,42 @@ paths:
   logs_dir: data/logs
   models_dir: models
   knowledge_base_dir: knowledge_base
-
 ollama:
-  host: "127.0.0.1"
+  host: 127.0.0.1
   port: 11434
   timeout_s: 10.0
   cache_ttl_s: 10.0
-
 routing:
   task_requirements:
     document:
       preferred_role: general
-      capabilities: [reasoning, document_analysis]
+      capabilities:
+      - reasoning
+      - document_analysis
       modality: text
     coding:
       preferred_role: coding
-      capabilities: [coding, debugging, testing]
+      capabilities:
+      - coding
+      - debugging
+      - testing
       modality: text
     vision:
       preferred_role: vision
-      capabilities: [image_analysis]
+      capabilities:
+      - image_analysis
       modality: image
+rag:
+  chunk_size: 800
+  overlap: 120
+  top_k: 5
+  similarity_threshold: 0.55
+  collection_name: knowledge_base
+  embedding:
+    model_id: BAAI/bge-small-en-v1.5
+    local_model_path: null
+    dimension: 384
+    allow_download: false
+  chroma:
+    persist_directory: data/chroma
+    anonymized_telemetry: false
