@@ -72,3 +72,17 @@ upload:
   - application/pdf
   - image/jpeg
   - image/png
+
+sovereignty:
+  poll_interval_s: 1.0
+  allowlist_hosts:
+  - 127.0.0.1
+  - localhost
+  - '::1'
+  - 0.0.0.0
+  allowlist_ports:
+  - 11434
+  - 8000
+  - 5173
+  docker_socket: /var/run/docker.sock
+  aggregation_window_minutes: 5

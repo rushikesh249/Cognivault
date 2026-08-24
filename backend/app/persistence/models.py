@@ -102,3 +102,19 @@ class ModelRegistryMetaORM(Base):
     enabled = Column(Boolean, nullable=False, default=True)
     last_probe_at = Column(DateTime, nullable=True)
     last_available = Column(Boolean, nullable=True)
+
+
+class SovereigntyEventORM(Base):
+    """Sovereignty and outbound network events table (TRD Section 10.7, Table 27)."""
+    __tablename__ = "sovereignty_events"
+
+    event_id = Column(String(36), primary_key=True, default=generate_uuid)
+    ts = Column(DateTime, default=get_utc_now, nullable=False, index=True)
+    process = Column(String(64), nullable=False)
+    destination_host = Column(String(255), nullable=True)
+    destination_port = Column(Integer, nullable=True)
+    classification = Column(String(32), nullable=False)  # CHECK IN ('local', 'external', 'blocked')
+    bytes_sent = Column(Integer, nullable=True)
+    byte_accounting_supported = Column(Boolean, nullable=False, default=False)
+    dns_observed = Column(Boolean, nullable=True)
+    adapter = Column(String(64), nullable=False)

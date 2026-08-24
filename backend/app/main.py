@@ -19,9 +19,11 @@ from backend.app.api.events import router as events_router
 from backend.app.api.files import router as files_router
 from backend.app.api.artifacts import router as artifacts_router
 from backend.app.api.vision import router as vision_router
+from backend.app.api.sovereignty import router as sovereignty_router
 from backend.app.core.config import settings
 from backend.app.core.logging import setup_logging
 from backend.app.persistence.db import init_db
+from backend.app.sovereignty.monitor import get_sovereignty_monitor
 
 logger = logging.getLogger("sovereign_workbench.main")
 
@@ -46,7 +48,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     registry = get_model_registry()
     logger.info(f"Initialized Model Registry with {registry.count()} configured models")
     
+    # Start Sovereignty Monitor background audit
+    monitor = get_sovereignty_monitor()
+    monitor.start()
+    logger.info("Started Sovereignty Network Monitor")
+
     yield
+
+    monitor.stop()
+    logger.info("Stopped Sovereignty Network Monitor")
     logger.info(f"Shutting down {settings.app.name}")
 
 
@@ -77,6 +87,7 @@ def create_app() -> FastAPI:
     app_instance.include_router(files_router)
     app_instance.include_router(artifacts_router)
     app_instance.include_router(vision_router)
+    app_instance.include_router(sovereignty_router)
 
     return app_instance
 

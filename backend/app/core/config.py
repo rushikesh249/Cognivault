@@ -133,6 +133,23 @@ class UploadSettings(BaseModel):
     )
 
 
+
+
+class SovereigntySettings(BaseModel):
+    """Sovereignty Monitor and network isolation configuration (TRD ?24.1, ?30)."""
+    poll_interval_s: float = Field(default=1.0, ge=0.1, le=10.0, description="Interval in seconds between process socket audits")
+    allowlist_hosts: List[str] = Field(
+        default_factory=lambda: ["127.0.0.1", "localhost", "::1", "0.0.0.0"],
+        description="Permitted local loopback host addresses",
+    )
+    allowlist_ports: List[int] = Field(
+        default_factory=lambda: [11434, 8000, 5173],
+        description="Permitted local service ports (Ollama, Backend API, Frontend Vite)",
+    )
+    docker_socket: str = Field(default="/var/run/docker.sock", description="Local Docker daemon socket path")
+    aggregation_window_minutes: int = Field(default=5, ge=1, le=60, description="Rolling window in minutes for live counters")
+
+
 class Settings(BaseModel):
     app: AppInfo = Field(default_factory=AppInfo)
     paths: AppPaths = Field(default_factory=AppPaths)
@@ -143,6 +160,7 @@ class Settings(BaseModel):
     agent: AgentSettings = Field(default_factory=AgentSettings)
     ocr: OCRSettings = Field(default_factory=OCRSettings)
     upload: UploadSettings = Field(default_factory=UploadSettings)
+    sovereignty: SovereigntySettings = Field(default_factory=SovereigntySettings)
 
 
 def get_project_root() -> Path:
