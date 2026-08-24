@@ -1,4 +1,4 @@
-﻿"""Unit tests for Observation Node Pytest Failure Parser (TRD Section 20.2)."""
+"""Unit tests for Observation Node Pytest Failure Parser (TRD Section 20.2)."""
 
 import pytest
 from backend.app.agent.nodes.observation import parse_pytest_failures

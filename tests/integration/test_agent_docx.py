@@ -1,4 +1,4 @@
-﻿"""Hero Flow 1 End-to-End Integration Test (TRD Section 19, Table 44, Test Plan Section 12)."""
+"""Hero Flow 1 End-to-End Integration Test (TRD Section 19, Table 44, Test Plan Section 12)."""
 
 import uuid
 from pathlib import Path

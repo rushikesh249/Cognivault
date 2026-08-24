@@ -1,4 +1,4 @@
-﻿"""Unit tests for all 8 LangGraph Agent Nodes in isolation (TRD Section 11.3, Table 30)."""
+"""Unit tests for all 8 LangGraph Agent Nodes in isolation (TRD Section 11.3, Table 30)."""
 
 import pytest
 from backend.app.agent.nodes import (

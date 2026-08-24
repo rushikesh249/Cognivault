@@ -1,4 +1,4 @@
-﻿"""File Ingestion and Storage Service (TRD Section 10.3, Table 11, Table 23)."""
+"""File Ingestion and Storage Service (TRD Section 10.3, Table 11, Table 23)."""
 
 import io
 import logging

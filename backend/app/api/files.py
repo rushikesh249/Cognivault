@@ -1,4 +1,4 @@
-﻿"""File Upload and Ingestion API Router (TRD Section 9, Table 11)."""
+"""File Upload and Ingestion API Router (TRD Section 9, Table 11)."""
 
 import logging
 from typing import Optional

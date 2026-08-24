@@ -1,4 +1,4 @@
-﻿"""Agent Orchestration Service (TRD Section 8, Table 8, ADR-005, Component #4)."""
+"""Agent Orchestration Service (TRD Section 8, Table 8, ADR-005, Component #4)."""
 
 import asyncio
 import logging

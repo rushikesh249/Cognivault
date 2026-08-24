@@ -1,4 +1,4 @@
-﻿"""Integration tests for Agent Run API and SSE Event Streaming (TRD Section 9, Table 12, Table 14)."""
+"""Integration tests for Agent Run API and SSE Event Streaming (TRD Section 9, Table 12, Table 14)."""
 
 import json
 import pytest

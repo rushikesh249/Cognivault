@@ -1,4 +1,4 @@
-﻿"""Unit Test Suite for Data Processor Module (Hero Flow 2 Demo Seed)."""
+"""Unit Test Suite for Data Processor Module (Hero Flow 2 Demo Seed)."""
 
 import pytest
 from data_processor import calculate_moving_average, calculate_summary, filter_outliers

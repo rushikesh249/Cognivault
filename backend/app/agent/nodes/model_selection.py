@@ -1,4 +1,4 @@
-﻿"""Stage 3: Model Selection Node (TRD Section 11.3, Table 30, ADR-004)."""
+"""Stage 3: Model Selection Node (TRD Section 11.3, Table 30, ADR-004)."""
 
 import logging
 from typing import Any, Dict

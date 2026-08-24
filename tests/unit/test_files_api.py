@@ -1,4 +1,4 @@
-﻿"""Unit tests for File Upload and Ingestion API (TRD Section 9, Table 11)."""
+"""Unit tests for File Upload and Ingestion API (TRD Section 9, Table 11)."""
 
 import io
 import pytest

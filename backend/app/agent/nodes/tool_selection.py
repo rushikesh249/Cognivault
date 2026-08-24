@@ -1,4 +1,4 @@
-﻿"""Stage 4: Tool Selection Node (TRD Section 11.3, Table 30, Table 44, Section 20, ADR-005)."""
+"""Stage 4: Tool Selection Node (TRD Section 11.3, Table 30, Table 44, Section 20, ADR-005)."""
 
 import logging
 from typing import Any, Dict, Optional
@@ -30,7 +30,81 @@ def tool_selection_node(state: AgentState) -> Dict[str, Any]:
     # Determine tool candidate based on plan step and task_type
     if task_type == "document":
         step_lower = current_step.lower()
-        if "extract" in step_lower or "ocr" in step_lower or "report" in step_lower:
+        if "artifact" in step_lower or "generate" in step_lower or "docx" in step_lower or "xlsx" in step_lower or "pptx" in step_lower or "pdf" in step_lower or "approval note" in step_lower:
+            citations = []
+            for obs in state.get("observations", []):
+                struct = obs.get("structured_data", {})
+                if struct.get("tool_name") == "search_knowledge_base":
+                    data = struct.get("data", {})
+                    citations.extend(data.get("citations", []))
+
+            if not citations:
+                citations = [
+                    "Safety SOP - Section 4.2 Emergency Shutdown Systems (p.12)",
+                    "Equipment Standards - Section 11.4 Relief Valve Recertification (p.56)",
+                    "Maintenance Manual - Section 8.1 Flange Integrity & Bolt Torquing (p.34)",
+                ]
+
+            doc_payload = {
+                "task_id": task_id,
+                "title": "TECHNICAL APPROVAL NOTE: EQUIPMENT INSPECTION COMPLIANCE",
+                "facility": "Primary Refining Unit 02 - Flare Header & Pump Skid P-102A",
+                "summary": "Autonomous compliance assessment conducted on inspection report MRPL-INSP-2026-8842. Critical wall thinning and relief valve recalibration non-compliances require immediate remediation.",
+                "critical_findings": [
+                    "Corrosion fatigue detected on primary discharge flange FL-102B bolts (1.65mm thinning > 1.50mm limit).",
+                    "Pressure Relief Valve PRV-204 recalibration interval exceeded allowable 12-month limit (overdue by 2 months).",
+                    "Pump P-102A mechanical seal weeping with pressure drop from 2.5 bar to 1.1 bar.",
+                ],
+                "compliance_gaps": [
+                    ("Discharge Flange Wall Thinning (1.65mm)", "Safety SOP - Section 4.2 Emergency Shutdown Systems (p.12)", "CRITICAL NON-COMPLIANCE"),
+                    ("PRV-204 Calibration Interval Overdue", "Equipment Standards - Section 11.4 Relief Valve Recertification (p.56)", "MAJOR GAP"),
+                    ("Seal Integrity Barrier Weeping", "Maintenance Manual - Section 8.1 Flange Integrity & Bolt Torquing (p.34)", "MODERATE GAP"),
+                ],
+                "recommendations": [
+                    "Initiate scheduled depressurization and bolt replacement on Flange FL-102B.",
+                    "Schedule immediate hydrostatic test and recalibration for PRV-204 within 48 hours.",
+                    "Replace mechanical seal pack on Pump P-102A prior to resuming continuous feed.",
+                ],
+                "citations": citations,
+            }
+
+            if "xlsx" in step_lower or "excel" in step_lower or "spreadsheet" in step_lower:
+                if "create_xlsx" in permitted_tools:
+                    staged_call = {
+                        "tool_name": "create_xlsx",
+                        "arguments": {
+                            "template": "spreadsheet_report",
+                            "data": doc_payload,
+                        },
+                    }
+            elif "pptx" in step_lower or "presentation" in step_lower or "deck" in step_lower or "slides" in step_lower:
+                if "create_pptx" in permitted_tools:
+                    staged_call = {
+                        "tool_name": "create_pptx",
+                        "arguments": {
+                            "template": "presentation_deck",
+                            "data": doc_payload,
+                        },
+                    }
+            elif "pdf" in step_lower:
+                if "create_pdf" in permitted_tools:
+                    staged_call = {
+                        "tool_name": "create_pdf",
+                        "arguments": {
+                            "template": "pdf_report",
+                            "data": doc_payload,
+                        },
+                    }
+            elif "docx" in step_lower or "approval note" in step_lower or "artifact" in step_lower:
+                if "create_docx" in permitted_tools:
+                    staged_call = {
+                        "tool_name": "create_docx",
+                        "arguments": {
+                            "template": "approval_note",
+                            "data": doc_payload,
+                        },
+                    }
+        elif "extract" in step_lower or "ocr" in step_lower or "scan" in step_lower or "finding" in step_lower:
             if "extract_text_from_scan" in permitted_tools:
                 file_id = "scanned_inspection_report.pdf"
                 with get_db_context() as session:
@@ -43,57 +117,13 @@ def tool_selection_node(state: AgentState) -> Dict[str, Any]:
                     "tool_name": "extract_text_from_scan",
                     "arguments": {"file_id": file_id, "page": 1},
                 }
-        elif "search" in step_lower or "knowledge base" in step_lower or "standard" in step_lower:
+        elif "search" in step_lower or "knowledge base" in step_lower or "standard" in step_lower or "guideline" in step_lower:
             if "search_knowledge_base" in permitted_tools:
                 staged_call = {
                     "tool_name": "search_knowledge_base",
                     "arguments": {
                         "query": "flange corrosion relief valve calibration emergency shutdown",
                         "top_k": 4,
-                    },
-                }
-        elif "docx" in step_lower or "approval note" in step_lower or "artifact" in step_lower:
-            if "create_docx" in permitted_tools:
-                citations = []
-                for obs in state.get("observations", []):
-                    struct = obs.get("structured_data", {})
-                    if struct.get("tool_name") == "search_knowledge_base":
-                        data = struct.get("data", {})
-                        citations.extend(data.get("citations", []))
-
-                if not citations:
-                    citations = [
-                        "Safety SOP - Section 4.2 Emergency Shutdown Systems (p.12)",
-                        "Equipment Standards - Section 11.4 Relief Valve Recertification (p.56)",
-                        "Maintenance Manual - Section 8.1 Flange Integrity & Bolt Torquing (p.34)",
-                    ]
-
-                staged_call = {
-                    "tool_name": "create_docx",
-                    "arguments": {
-                        "template": "approval_note",
-                        "data": {
-                            "task_id": task_id,
-                            "title": "TECHNICAL APPROVAL NOTE: EQUIPMENT INSPECTION COMPLIANCE",
-                            "facility": "Primary Refining Unit 02 - Flare Header & Pump Skid P-102A",
-                            "summary": "Autonomous compliance assessment conducted on inspection report MRPL-INSP-2026-8842. Critical wall thinning and relief valve recalibration non-compliances require immediate remediation.",
-                            "critical_findings": [
-                                "Corrosion fatigue detected on primary discharge flange FL-102B bolts (1.65mm thinning > 1.50mm limit).",
-                                "Pressure Relief Valve PRV-204 recalibration interval exceeded allowable 12-month limit (overdue by 2 months).",
-                                "Pump P-102A mechanical seal weeping with pressure drop from 2.5 bar to 1.1 bar.",
-                            ],
-                            "compliance_gaps": [
-                                ("Discharge Flange Wall Thinning (1.65mm)", "Safety SOP - Section 4.2 Emergency Shutdown Systems (p.12)", "CRITICAL NON-COMPLIANCE"),
-                                ("PRV-204 Calibration Interval Overdue", "Equipment Standards - Section 11.4 Relief Valve Recertification (p.56)", "MAJOR GAP"),
-                                ("Seal Integrity Barrier Weeping", "Maintenance Manual - Section 8.1 Flange Integrity & Bolt Torquing (p.34)", "MODERATE GAP"),
-                            ],
-                            "recommendations": [
-                                "Initiate scheduled depressurization and bolt replacement on Flange FL-102B.",
-                                "Schedule immediate hydrostatic test and recalibration for PRV-204 within 48 hours.",
-                                "Replace mechanical seal pack on Pump P-102A prior to resuming continuous feed.",
-                            ],
-                            "citations": citations,
-                        },
                     },
                 }
 

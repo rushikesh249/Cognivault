@@ -1,4 +1,4 @@
-﻿"""Tool Layer Module (TRD Section 12, Table 31)."""
+"""Tool Layer Module (TRD Section 12, Table 31)."""
 
 from backend.app.tools.base import (
     BaseTool,

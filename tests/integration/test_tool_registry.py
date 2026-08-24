@@ -1,4 +1,4 @@
-﻿"""Integration tests for Tool Registry, File Sandbox containment, and RAG Tool (TRD Section 12, Component #14, #15)."""
+"""Integration tests for Tool Registry, File Sandbox containment, and RAG Tool (TRD Section 12, Component #14, #15)."""
 
 import os
 from pathlib import Path

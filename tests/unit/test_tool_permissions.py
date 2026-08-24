@@ -1,4 +1,4 @@
-﻿"""Unit tests for Tool Registry, Schema Validation, and Permission Matrix (TRD Section 12, Table 31, Test Plan P16)."""
+"""Unit tests for Tool Registry, Schema Validation, and Permission Matrix (TRD Section 12, Table 31, Test Plan P16)."""
 
 import pytest
 from pydantic import ValidationError

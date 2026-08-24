@@ -1,4 +1,4 @@
-﻿"""Stage 8: Final Deliverable Terminal Node (TRD Section 11.3, Table 30, Table 44)."""
+"""Stage 8: Final Deliverable Terminal Node (TRD Section 11.3, Table 30, Table 44)."""
 
 import logging
 from typing import Any, Dict

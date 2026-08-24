@@ -1,4 +1,4 @@
-﻿"""File Tools with strict workspace boundary enforcement (TRD Section 12, Table 31, Component #15)."""
+"""File Tools with strict workspace boundary enforcement (TRD Section 12, Table 31, Component #15)."""
 
 import logging
 import os

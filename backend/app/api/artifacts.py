@@ -1,4 +1,4 @@
-﻿"""Artifact Retrieval and Download API Router (TRD Section 9, Table 18)."""
+"""Artifact Retrieval and Download API Router (TRD Section 9, Table 18)."""
 
 import logging
 from typing import List, Optional, Union

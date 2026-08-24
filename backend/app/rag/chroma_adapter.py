@@ -1,4 +1,4 @@
-﻿"""ChromaDB Persistent Client Adapter (TRD Section 16.1, Component #11, ADR-006).
+"""ChromaDB Persistent Client Adapter (TRD Section 16.1, Component #11, ADR-006).
 
 Strictly enforces local persistence at data/chroma/ and zero telemetry transmission.
 """

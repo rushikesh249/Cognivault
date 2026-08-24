@@ -1,4 +1,4 @@
-﻿"""Agent Execution API Router (TRD Section 9, Table 12)."""
+"""Agent Execution API Router (TRD Section 9, Table 12)."""
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status

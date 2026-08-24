@@ -1,4 +1,4 @@
-﻿"""Data models and specifications for code execution sandbox (TRD Section 20, Table 17, Component #16)."""
+"""Data models and specifications for code execution sandbox (TRD Section 20, Table 17, Component #16)."""
 
 from pathlib import Path
 from typing import Optional

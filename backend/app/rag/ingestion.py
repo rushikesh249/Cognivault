@@ -1,4 +1,4 @@
-﻿"""Document Ingestion Pipeline (TRD Section 16.1, Table 36, Component #9).
+"""Document Ingestion Pipeline (TRD Section 16.1, Table 36, Component #9).
 
 Parses documents (Markdown/TXT/PDF), cleans text, applies heading-aware section detection,
 and chunks text using sentence-boundary aware token constraints (800 tokens, 120 overlap).

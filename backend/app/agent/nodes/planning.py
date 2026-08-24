@@ -11,14 +11,24 @@ logger = logging.getLogger("sovereign_workbench.agent.node.planning")
 def generate_default_plan(task_type: str, goal: str) -> List[str]:
     """Generate default execution plan based on task_type and goal (TRD Table 44, Table 48)."""
     if task_type == "document":
+        goal_lower = (goal or "").lower()
+        if "xlsx" in goal_lower or "excel" in goal_lower or "spreadsheet" in goal_lower:
+            format_step = "Generate technical inspection summary XLSX artifact"
+        elif "pptx" in goal_lower or "presentation" in goal_lower or "deck" in goal_lower or "slides" in goal_lower:
+            format_step = "Generate management summary deck PPTX artifact"
+        elif "pdf" in goal_lower:
+            format_step = "Generate technical inspection report PDF artifact"
+        else:
+            format_step = "Generate technical Approval Note DOCX artifact"
+
         return [
             "Extract findings and anomalies from inspection report",
             "Search safety standards and guidelines in knowledge base",
             "Evaluate compliance gaps against safety clauses",
-            "Generate technical Approval Note DOCX artifact",
+            format_step,
         ]
     elif task_type == "coding":
-        goal_lower = goal.lower()
+        goal_lower = (goal or "").lower()
         if "test" in goal_lower or "fix" in goal_lower or "defect" in goal_lower or "bug" in goal_lower:
             return ["Execute test suite to detect failures"]
         return ["Execute solution script in sandbox"]

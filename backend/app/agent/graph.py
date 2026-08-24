@@ -1,4 +1,4 @@
-﻿"""LangGraph StateGraph Builder and Workflow Engine (TRD Section 11.1, Table 28, Table 30, ADR-005)."""
+"""LangGraph StateGraph Builder and Workflow Engine (TRD Section 11.1, Table 28, Table 30, ADR-005)."""
 
 from typing import Literal
 from langgraph.graph import StateGraph, START, END

@@ -1,4 +1,4 @@
-﻿"""Approval Note Word Document (DOCX) Template Renderer (TRD Section 22, PRD Requirement #8)."""
+"""Approval Note Word Document (DOCX) Template Renderer (TRD Section 22, PRD Requirement #8)."""
 
 import datetime
 from pathlib import Path

@@ -1,4 +1,4 @@
-﻿"""SQLAlchemy ORM models for SQLite persistence (TRD Section 10)."""
+"""SQLAlchemy ORM models for SQLite persistence (TRD Section 10)."""
 
 import datetime
 import uuid

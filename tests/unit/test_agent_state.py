@@ -1,4 +1,4 @@
-﻿"""Unit tests for Agent State and Record Schemas (TRD Section 11.2, Table 29)."""
+"""Unit tests for Agent State and Record Schemas (TRD Section 11.2, Table 29)."""
 
 import pytest
 from backend.app.agent.state import AgentState, ObservationRecord, ToolCallRecord

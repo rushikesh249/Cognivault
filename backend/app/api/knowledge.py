@@ -1,4 +1,4 @@
-﻿"""Knowledge Base REST API Router (TRD Section 9, Table 15)."""
+"""Knowledge Base REST API Router (TRD Section 9, Table 15)."""
 
 import logging
 from typing import List, Optional

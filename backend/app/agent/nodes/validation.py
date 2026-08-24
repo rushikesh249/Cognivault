@@ -1,9 +1,12 @@
-"""Stage 7: Validation Node (TRD Section 11.3, Table 30, Table 44, Table 48, Section 20, Section 21, ADR-005)."""
+"""Stage 7: Validation Node (TRD Section 11.3, Table 30, Table 44, Section 21, Section 22)."""
 
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 import docx
+import fitz  # PyMuPDF
+import openpyxl
+import pptx
 
 from backend.app.agent.event_broadcaster import get_event_broadcaster
 from backend.app.agent.state import AgentState
@@ -14,7 +17,7 @@ logger = logging.getLogger("sovereign_workbench.agent.node.validation")
 
 
 def validation_node(state: AgentState) -> Dict[str, Any]:
-    """Validation node: checks step criteria, validates deliverables, and determines loop/finalization."""
+    """Validation node: verifies plan execution, tool outputs, artifacts, and tests."""
     task_id = state["task_id"]
     task_type = state.get("task_type", "document")
     iteration = state.get("iteration", 1)
@@ -81,27 +84,67 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
                         latest_art = arts[-1]
                         artifact_id = latest_art.artifact_id
                         file_path = Path(latest_art.storage_path)
+                        doc_kind = (latest_art.kind or "").lower()
                         
                         if not file_path.exists():
                             validation_passed = False
-                            validation_notes = f"Generated DOCX artifact missing from disk: {file_path}"
+                            validation_notes = f"Generated {doc_kind.upper()} artifact missing from disk: {file_path}"
                         else:
                             try:
-                                doc = docx.Document(str(file_path))
-                                full_doc_text = "\n".join(p.text for p in doc.paragraphs)
-                                required_markers = ["Inspection", "Critical", "Compliance", "Recommendation"]
-                                missing = [m for m in required_markers if m.lower() not in full_doc_text.lower()]
-                                if missing:
-                                    validation_passed = False
-                                    validation_notes = f"DOCX artifact missing required sections: {missing}"
+                                if doc_kind == "docx" or file_path.suffix.lower() == ".docx":
+                                    doc = docx.Document(str(file_path))
+                                    full_doc_text = "\n".join(p.text for p in doc.paragraphs)
+                                    required_markers = ["Inspection", "Critical", "Compliance", "Recommendation"]
+                                    missing = [m for m in required_markers if m.lower() not in full_doc_text.lower()]
+                                    if missing:
+                                        validation_passed = False
+                                        validation_notes = f"DOCX artifact missing required sections: {missing}"
+                                    else:
+                                        validation_notes = "Plan execution and deliverable artifacts validated successfully."
+
+                                elif doc_kind == "xlsx" or file_path.suffix.lower() == ".xlsx":
+                                    wb = openpyxl.load_workbook(str(file_path), read_only=True)
+                                    sheets = wb.sheetnames
+                                    if len(sheets) < 1:
+                                        validation_passed = False
+                                        validation_notes = "XLSX artifact contains no worksheets."
+                                    else:
+                                        validation_notes = f"XLSX artifact validated successfully ({len(sheets)} worksheets: {sheets})."
+                                    wb.close()
+
+                                elif doc_kind == "pptx" or file_path.suffix.lower() == ".pptx":
+                                    prs = pptx.Presentation(str(file_path))
+                                    slide_count = len(prs.slides)
+                                    if slide_count < 3:
+                                        validation_passed = False
+                                        validation_notes = f"PPTX artifact has insufficient slides ({slide_count} < 3)."
+                                    else:
+                                        validation_notes = f"PPTX presentation validated successfully ({slide_count} slides)."
+
+                                elif doc_kind == "pdf" or file_path.suffix.lower() == ".pdf":
+                                    pdf_doc = fitz.open(str(file_path))
+                                    page_count = len(pdf_doc)
+                                    if page_count < 1:
+                                        validation_passed = False
+                                        validation_notes = "PDF artifact contains 0 pages."
+                                    else:
+                                        pdf_text = "\n".join(page.get_text() for page in pdf_doc)
+                                        if len(pdf_text.strip()) < 50:
+                                            validation_passed = False
+                                            validation_notes = "PDF artifact contains insufficient text content."
+                                        else:
+                                            validation_notes = f"PDF report validated successfully ({page_count} pages, {len(pdf_text)} chars)."
+                                    pdf_doc.close()
+
                                 else:
-                                    validation_notes = "Plan execution and deliverable artifacts validated successfully."
+                                    validation_notes = f"Document artifact '{file_path.name}' verified on disk."
+
                             except Exception as e:
                                 validation_passed = False
-                                validation_notes = f"DOCX verification failed: {e}"
+                                validation_notes = f"Document artifact verification failed for {doc_kind}: {e}"
 
     elif task_type == "vision":
-        # Multimodal Vision Validation (TRD ?18.1, Table 48)
+        # Multimodal Vision Validation (TRD §18.1, Table 48)
         if current_step_index < len(plan):
             if has_errors:
                 validation_passed = False

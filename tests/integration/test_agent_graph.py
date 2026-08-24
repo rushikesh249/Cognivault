@@ -1,4 +1,4 @@
-﻿"""Integration tests for LangGraph Agent State Machine and Iteration Bounding (TRD Section 11, ADR-005, Test Plan Section 5)."""
+"""Integration tests for LangGraph Agent State Machine and Iteration Bounding (TRD Section 11, ADR-005, Test Plan Section 5)."""
 
 import pytest
 from langgraph.graph import StateGraph, START, END

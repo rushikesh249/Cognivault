@@ -1,4 +1,4 @@
-﻿"""Event Broadcaster and Synchronous Task Event Logging for Agent Execution (TRD Section 11.4, Table 14)."""
+"""Event Broadcaster and Synchronous Task Event Logging for Agent Execution (TRD Section 11.4, Table 14)."""
 
 import asyncio
 import logging

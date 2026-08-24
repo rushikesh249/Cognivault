@@ -1,4 +1,4 @@
-﻿"""Integration tests for the full Sovereign RAG Pipeline (TRD Section 16.1-16.3, Section 27.2, Test Plan P20-22)."""
+"""Integration tests for the full Sovereign RAG Pipeline (TRD Section 16.1-16.3, Section 27.2, Test Plan P20-22)."""
 
 import os
 from pathlib import Path

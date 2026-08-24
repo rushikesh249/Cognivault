@@ -1,4 +1,4 @@
-﻿"""Data Processor Module for Telemetry Analysis (Hero Flow 2 Demo Seed).
+"""Data Processor Module for Telemetry Analysis (Hero Flow 2 Demo Seed).
 
 NOTE: Contains exactly ONE intentional, recoverable logic defect for self-correction demo.
 Defect: calculate_moving_average has an off-by-one slice error.

@@ -1,8 +1,8 @@
-﻿"""Document Generation Tool Implementations (TRD Section 12, Table 31, Component #17)."""
+"""Document Generation Tools for Sovereign Agentic Workbench (TRD Section 12, Table 31, Section 22)."""
 
 import logging
 import uuid
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from backend.app.documents.doc_generator import DocumentGenerationError, get_doc_generator
@@ -14,12 +14,14 @@ logger = logging.getLogger("sovereign_workbench.tools.doc")
 
 
 class DocGenInput(BaseModel):
+    """Input payload schema for document creation tools (TRD Table 31)."""
     template: str = Field(..., min_length=1, description="Template identifier or format name")
     data: Dict[str, Any] = Field(default_factory=dict, description="Structured document data")
 
 
 class DocGenOutput(BaseModel):
-    artifact_id: str = Field(..., description="Unique artifact identifier for generated file")
+    """Output schema for document creation tools returning the created artifact_id (TRD Table 31)."""
+    artifact_id: str = Field(..., description="Unique UUID identifier of the generated deliverable artifact.")
 
 
 class CreateDocxTool(BaseTool):
@@ -33,31 +35,28 @@ class CreateDocxTool(BaseTool):
             input_schema=DocGenInput,
             output_schema=DocGenOutput,
             allowed_task_types=["document"],
-            timeout_s=20.0,
+            timeout_s=30.0,
             fs_boundary="writes to data/outputs/ only",
             network="none",
         )
 
     def execute(self, input_data: DocGenInput, ctx: ToolContext) -> DocGenOutput:
         logger.info(f"Executing create_docx for task '{ctx.task_id}' (template: {input_data.template})")
-        
         doc_gen = get_doc_generator()
         task_id = ctx.task_id
-        
-        # Inject task_id into payload if missing
+
         payload = dict(input_data.data)
         payload.setdefault("task_id", task_id)
-        
+
         try:
             output_path, artifact_id = doc_gen.render(
                 kind="docx",
                 data=payload,
             )
-            
-            # Register in SQLite artifacts table (TRD Section 10.5)
+
             sources = payload.get("citations", [])
             title = payload.get("title", "Technical Approval Note: Equipment Inspection")
-            
+
             with get_db_context() as session:
                 repo = ArtifactRepository(session)
                 repo.create(
@@ -68,7 +67,7 @@ class CreateDocxTool(BaseTool):
                     sources=sources,
                     artifact_id=artifact_id,
                 )
-                
+
             return DocGenOutput(artifact_id=artifact_id)
         except DocumentGenerationError as dge:
             raise ToolError(str(dge)) from dge
@@ -78,66 +77,156 @@ class CreateDocxTool(BaseTool):
 
 
 class CreateXlsxTool(BaseTool):
-    """Tool contract for generating analysis spreadsheets (TRD Table 31)."""
+    """Tool for generating technical inspection spreadsheets in XLSX format (TRD Table 31)."""
 
     @property
     def metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="create_xlsx",
-            purpose="Generate an analysis spreadsheet.",
+            purpose="Generate a technical inspection summary in XLSX spreadsheet format.",
             input_schema=DocGenInput,
             output_schema=DocGenOutput,
             allowed_task_types=["document"],
-            timeout_s=20.0,
+            timeout_s=30.0,
             fs_boundary="writes to data/outputs/ only",
             network="none",
         )
 
     def execute(self, input_data: DocGenInput, ctx: ToolContext) -> DocGenOutput:
-        art_id = str(uuid.uuid4())
-        logger.info(f"create_xlsx contract called for task '{ctx.task_id}' (template: {input_data.template})")
-        return DocGenOutput(artifact_id=art_id)
+        logger.info(f"Executing create_xlsx for task '{ctx.task_id}' (template: {input_data.template})")
+        doc_gen = get_doc_generator()
+        task_id = ctx.task_id
+
+        payload = dict(input_data.data)
+        payload.setdefault("task_id", task_id)
+
+        try:
+            output_path, artifact_id = doc_gen.render(
+                kind="xlsx",
+                data=payload,
+            )
+
+            sources = payload.get("citations", [])
+            title = payload.get("title", "Technical Inspection & Compliance Summary Spreadsheet")
+
+            with get_db_context() as session:
+                repo = ArtifactRepository(session)
+                repo.create(
+                    task_id=task_id,
+                    kind="xlsx",
+                    title=title,
+                    storage_path=str(output_path),
+                    sources=sources,
+                    artifact_id=artifact_id,
+                )
+
+            return DocGenOutput(artifact_id=artifact_id)
+        except DocumentGenerationError as dge:
+            raise ToolError(str(dge)) from dge
+        except Exception as e:
+            logger.error(f"create_xlsx failed for task '{task_id}': {e}", exc_info=True)
+            raise ToolError(f"Failed to generate XLSX document: {e}") from e
 
 
 class CreatePptxTool(BaseTool):
-    """Tool contract for generating management summary decks (TRD Table 31)."""
+    """Tool for generating management summary decks in PPTX format (TRD Table 31)."""
 
     @property
     def metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="create_pptx",
-            purpose="Generate a management summary deck.",
+            purpose="Generate a management summary presentation deck in PPTX format.",
             input_schema=DocGenInput,
             output_schema=DocGenOutput,
             allowed_task_types=["document"],
-            timeout_s=20.0,
+            timeout_s=30.0,
             fs_boundary="writes to data/outputs/ only",
             network="none",
         )
 
     def execute(self, input_data: DocGenInput, ctx: ToolContext) -> DocGenOutput:
-        art_id = str(uuid.uuid4())
-        logger.info(f"create_pptx contract called for task '{ctx.task_id}' (template: {input_data.template})")
-        return DocGenOutput(artifact_id=art_id)
+        logger.info(f"Executing create_pptx for task '{ctx.task_id}' (template: {input_data.template})")
+        doc_gen = get_doc_generator()
+        task_id = ctx.task_id
+
+        payload = dict(input_data.data)
+        payload.setdefault("task_id", task_id)
+
+        try:
+            output_path, artifact_id = doc_gen.render(
+                kind="pptx",
+                data=payload,
+            )
+
+            sources = payload.get("citations", [])
+            title = payload.get("title", "Executive Management Inspection & Compliance Presentation Deck")
+
+            with get_db_context() as session:
+                repo = ArtifactRepository(session)
+                repo.create(
+                    task_id=task_id,
+                    kind="pptx",
+                    title=title,
+                    storage_path=str(output_path),
+                    sources=sources,
+                    artifact_id=artifact_id,
+                )
+
+            return DocGenOutput(artifact_id=artifact_id)
+        except DocumentGenerationError as dge:
+            raise ToolError(str(dge)) from dge
+        except Exception as e:
+            logger.error(f"create_pptx failed for task '{task_id}': {e}", exc_info=True)
+            raise ToolError(f"Failed to generate PPTX document: {e}") from e
 
 
 class CreatePdfTool(BaseTool):
-    """Tool contract for generating PDF reports (TRD Table 31)."""
+    """Tool for generating technical inspection reports in PDF format (TRD Table 31)."""
 
     @property
     def metadata(self) -> ToolMetadata:
         return ToolMetadata(
             name="create_pdf",
-            purpose="Generate a PDF report.",
+            purpose="Generate a formal technical inspection report in PDF format.",
             input_schema=DocGenInput,
             output_schema=DocGenOutput,
             allowed_task_types=["document"],
-            timeout_s=20.0,
+            timeout_s=30.0,
             fs_boundary="writes to data/outputs/ only",
             network="none",
         )
 
     def execute(self, input_data: DocGenInput, ctx: ToolContext) -> DocGenOutput:
-        art_id = str(uuid.uuid4())
-        logger.info(f"create_pdf contract called for task '{ctx.task_id}' (template: {input_data.template})")
-        return DocGenOutput(artifact_id=art_id)
+        logger.info(f"Executing create_pdf for task '{ctx.task_id}' (template: {input_data.template})")
+        doc_gen = get_doc_generator()
+        task_id = ctx.task_id
+
+        payload = dict(input_data.data)
+        payload.setdefault("task_id", task_id)
+
+        try:
+            output_path, artifact_id = doc_gen.render(
+                kind="pdf",
+                data=payload,
+            )
+
+            sources = payload.get("citations", [])
+            title = payload.get("title", "Technical Inspection & Compliance Report (PDF)")
+
+            with get_db_context() as session:
+                repo = ArtifactRepository(session)
+                repo.create(
+                    task_id=task_id,
+                    kind="pdf",
+                    title=title,
+                    storage_path=str(output_path),
+                    sources=sources,
+                    artifact_id=artifact_id,
+                )
+
+            return DocGenOutput(artifact_id=artifact_id)
+        except DocumentGenerationError as dge:
+            raise ToolError(str(dge)) from dge
+        except Exception as e:
+            logger.error(f"create_pdf failed for task '{task_id}': {e}", exc_info=True)
+            raise ToolError(f"Failed to generate PDF document: {e}") from e

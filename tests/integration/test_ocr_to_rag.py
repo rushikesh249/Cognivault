@@ -1,4 +1,4 @@
-﻿"""Integration tests for OCR-to-RAG Pipeline (TRD Section 17 & 19, Test Plan Section 7)."""
+"""Integration tests for OCR-to-RAG Pipeline (TRD Section 17 & 19, Test Plan Section 7)."""
 
 from pathlib import Path
 from unittest.mock import patch

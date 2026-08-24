@@ -1,4 +1,4 @@
-﻿"""Task Events SSE Streaming API Router (TRD Section 9, Table 14)."""
+"""Task Events SSE Streaming API Router (TRD Section 9, Table 14)."""
 
 import asyncio
 import json

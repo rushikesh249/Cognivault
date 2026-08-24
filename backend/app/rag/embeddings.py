@@ -1,4 +1,4 @@
-﻿"""Embedding Service for local vector representation (TRD Section 16.1, Component #10, ADR-006)."""
+"""Embedding Service for local vector representation (TRD Section 16.1, Component #10, ADR-006)."""
 
 from abc import ABC, abstractmethod
 import hashlib

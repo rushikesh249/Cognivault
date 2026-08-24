@@ -1,4 +1,4 @@
-﻿"""Docker Sandbox Runner (TRD Section 20, Section 23, ADR-008, Component #16).
+"""Docker Sandbox Runner (TRD Section 20, Section 23, ADR-008, Component #16).
 
 Executes generated code and tests inside an isolated sovereign-sandbox container.
 Strictly adheres to:

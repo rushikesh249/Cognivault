@@ -1,4 +1,4 @@
-﻿"""Base abstractions, context, result models, and exception hierarchy for Tool Layer (TRD Section 12, Table 31)."""
+"""Base abstractions, context, result models, and exception hierarchy for Tool Layer (TRD Section 12, Table 31)."""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass

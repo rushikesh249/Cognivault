@@ -1,4 +1,4 @@
-﻿"""Artifact Management Service (TRD Section 10.5, Table 18, Table 25)."""
+"""Artifact Management Service (TRD Section 10.5, Table 18, Table 25)."""
 
 import json
 import logging

@@ -1,4 +1,4 @@
-﻿"""OCR Extraction Tool (TRD Section 12, Table 31, Component #12)."""
+"""OCR Extraction Tool (TRD Section 12, Table 31, Component #12)."""
 
 import logging
 from pathlib import Path

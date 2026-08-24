@@ -1,4 +1,4 @@
-﻿"""Unit tests for RAG Retrieval, Similarity Thresholds, and Citations (TRD Section 16.2, Section 16.3, Table 37, Table 38)."""
+"""Unit tests for RAG Retrieval, Similarity Thresholds, and Citations (TRD Section 16.2, Section 16.3, Table 37, Table 38)."""
 
 from typing import List
 import pytest

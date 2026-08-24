@@ -1,4 +1,4 @@
-﻿"""Document Generation Package (TRD Section 22, Component #17)."""
+"""Document Generation Package (TRD Section 22, Component #17)."""
 
 from backend.app.documents.doc_generator import (
     DocGenerator,

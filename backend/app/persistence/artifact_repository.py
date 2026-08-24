@@ -1,4 +1,4 @@
-﻿"""Repository for Generated Artifacts (TRD Section 10.5, Table 25)."""
+"""Repository for Generated Artifacts (TRD Section 10.5, Table 25)."""
 
 import json
 from typing import Any, List, Optional

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python
+#!/usr/bin/env python
 """Knowledge Base Batch Indexing CLI Script (TRD Section 29.1, Section 33.1).
 
 Ingests all documents in knowledge_base/* into ChromaDB and registers metadata in SQLite.

@@ -1,4 +1,4 @@
-﻿"""RAG Engine / Orchestration Service (TRD Section 16.2, Component #8, Table 37)."""
+"""RAG Engine / Orchestration Service (TRD Section 16.2, Component #8, Table 37)."""
 
 import logging
 from typing import Any, Dict, List, Optional

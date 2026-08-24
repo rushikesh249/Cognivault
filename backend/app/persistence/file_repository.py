@@ -1,4 +1,4 @@
-﻿"""Repository for Uploaded Files (TRD Section 10.3, Table 23)."""
+"""Repository for Uploaded Files (TRD Section 10.3, Table 23)."""
 
 from typing import List, Optional
 from sqlalchemy.orm import Session

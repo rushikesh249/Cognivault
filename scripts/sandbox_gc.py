@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python
+#!/usr/bin/env python
 """Sandbox Garbage Collection and Cleanup Utility (TRD Section 23, Section 29.1).
 
 Reaps orphaned sovereign-sandbox containers and sweeps stale temporary workspace directories.

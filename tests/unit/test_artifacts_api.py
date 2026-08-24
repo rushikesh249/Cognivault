@@ -1,4 +1,4 @@
-﻿"""Unit tests for Artifact Retrieval and Metadata API (TRD Section 9, Table 18)."""
+"""Unit tests for Artifact Retrieval and Metadata API (TRD Section 9, Table 18)."""
 
 import uuid
 from pathlib import Path

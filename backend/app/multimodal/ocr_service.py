@@ -1,4 +1,4 @@
-﻿"""Local OCR Service (TRD Section 17, Tables 39 & 40, ADR-007, Component #12)."""
+"""Local OCR Service (TRD Section 17, Tables 39 & 40, ADR-007, Component #12)."""
 
 import io
 import logging

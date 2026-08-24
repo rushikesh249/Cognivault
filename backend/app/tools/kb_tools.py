@@ -1,4 +1,4 @@
-﻿"""Knowledge Base Semantic Search Tool (TRD Section 12, Table 31, Component #14, ADR-006)."""
+"""Knowledge Base Semantic Search Tool (TRD Section 12, Table 31, Component #14, ADR-006)."""
 
 import logging
 from typing import List, Optional

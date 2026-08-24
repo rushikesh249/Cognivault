@@ -1,4 +1,4 @@
-﻿"""Code Execution and Test Runner Tool Implementations (TRD Section 12, Section 20, Table 31, ADR-008).
+"""Code Execution and Test Runner Tool Implementations (TRD Section 12, Section 20, Table 31, ADR-008).
 
 Executes code and test commands in the isolated sovereign-sandbox Docker container.
 Strictly adheres to:

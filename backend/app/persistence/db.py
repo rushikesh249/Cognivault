@@ -1,4 +1,4 @@
-﻿"""SQLite Database Connection and Session Management (TRD Section 10, ADR-007)."""
+"""SQLite Database Connection and Session Management (TRD Section 10, ADR-007)."""
 
 from contextlib import contextmanager
 import logging

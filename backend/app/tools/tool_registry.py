@@ -1,4 +1,4 @@
-﻿"""Tool Registry mapping tool name -> {input schema, output schema, permission set, implementation} (TRD Section 12, Component #14)."""
+"""Tool Registry mapping tool name -> {input schema, output schema, permission set, implementation} (TRD Section 12, Component #14)."""
 
 import logging
 from typing import Any, Dict, List, Optional

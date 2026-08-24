@@ -1,4 +1,4 @@
-﻿"""Unit tests for Sandbox Specification and Schemas (TRD Section 20, Table 17)."""
+"""Unit tests for Sandbox Specification and Schemas (TRD Section 20, Table 17)."""
 
 import pytest
 from pydantic import ValidationError

@@ -1,4 +1,4 @@
-﻿"""Integration tests for Docker Code Sandbox and Security Containment (TRD Section 20, Section 23, ADR-008, Test Plan Section 8)."""
+"""Integration tests for Docker Code Sandbox and Security Containment (TRD Section 20, Section 23, ADR-008, Test Plan Section 8)."""
 
 from pathlib import Path
 import pytest

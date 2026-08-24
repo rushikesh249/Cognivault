@@ -1,4 +1,4 @@
-﻿"""Unit tests for Document Chunking and Tokenization (TRD Section 16.1, Section 16.3, Table 38, Test Plan P20)."""
+"""Unit tests for Document Chunking and Tokenization (TRD Section 16.1, Section 16.3, Table 38, Test Plan P20)."""
 
 import pytest
 from backend.app.rag.ingestion import (

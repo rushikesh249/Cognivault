@@ -1,4 +1,4 @@
-﻿"""State schema and data models for LangGraph Agent Engine (TRD Section 11.2, Table 29)."""
+"""State schema and data models for LangGraph Agent Engine (TRD Section 11.2, Table 29)."""
 
 import operator
 from typing import Annotated, Any, Dict, List, Literal, Optional, TypedDict

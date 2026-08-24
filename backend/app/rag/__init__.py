@@ -1,1 +1,1 @@
-﻿"""RAG module initialization."""
+"""RAG module initialization."""

@@ -1,4 +1,4 @@
-﻿"""Node implementations for LangGraph Agent Engine (TRD Section 11, Table 30)."""
+"""Node implementations for LangGraph Agent Engine (TRD Section 11, Table 30)."""
 
 from backend.app.agent.nodes.task_understanding import task_understanding_node
 from backend.app.agent.nodes.planning import planning_node

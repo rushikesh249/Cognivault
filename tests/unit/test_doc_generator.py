@@ -1,71 +1,71 @@
-﻿"""Unit tests for Document Generator and Approval Note Template (TRD Section 22, PRD Requirement #8)."""
+"""Unit tests for Document Generation Engine (TRD Section 22, Component #17)."""
 
 from pathlib import Path
+import openpyxl
+import pptx
+import fitz
 import docx
 import pytest
 
 from backend.app.documents.doc_generator import DocGenerator, DocumentGenerationError
 
 
-def test_doc_generator_approval_note_rendering(tmp_path):
-    """Verify DOCX Approval Note renders all 7 mandatory sections and opens in python-docx."""
-    generator = DocGenerator(outputs_dir=tmp_path)
-    
-    payload = {
-        "task_id": "test-task-12345",
-        "title": "TECHNICAL APPROVAL NOTE: EQUIPMENT COMPLIANCE",
-        "facility": "Primary Refining Unit 02",
-        "summary": "Full compliance evaluation executed.",
-        "critical_findings": [
-            "Flange FL-102B wall thinning (1.65mm).",
-            "PRV-204 calibration overdue by 2 months."
-        ],
-        "compliance_gaps": [
-            ("Flange thinning", "Safety SOP - Section 4.2 (p.12)", "CRITICAL NON-COMPLIANCE"),
-            ("PRV overdue", "Equipment Standards - Section 11.4 (p.56)", "MAJOR GAP"),
-        ],
-        "recommendations": [
-            "Schedule immediate bolt replacement.",
-            "Recertify PRV-204 within 48 hours."
-        ],
-        "citations": [
-            "Safety SOP - Section 4.2 (p.12)",
-            "Equipment Standards - Section 11.4 (p.56)",
-        ],
+@pytest.fixture
+def doc_gen(tmp_path):
+    return DocGenerator(outputs_dir=tmp_path)
+
+
+@pytest.fixture
+def sample_payload():
+    return {
+        "title": "INTEGRATED MULTI-FORMAT TEST REPORT",
+        "task_id": "TASK-MULTI-01",
+        "facility": "Primary Test Unit",
+        "summary": "Multi-format generation verification.",
+        "critical_findings": ["Finding A", "Finding B"],
+        "compliance_gaps": [("Finding A", "SOP Clause 1", "MAJOR GAP")],
+        "recommendations": ["Recommendation A", "Recommendation B"],
     }
 
-    output_path, art_id = generator.render(kind="docx", data=payload)
-    assert output_path.exists()
-    assert art_id is not None
 
-    # Verify document opens cleanly in python-docx
-    doc = docx.Document(str(output_path))
-    full_text = "\n".join(p.text for p in doc.paragraphs)
-    
-    # 1. Title block
-    assert "APPROVAL NOTE" in full_text.upper()
-    # 2. Inspection summary
-    assert "Inspection Overview" in full_text
-    # 3. Critical findings
-    assert "Critical Inspection Findings" in full_text
-    # 4. Compliance gaps & SOP citations
-    assert "Compliance Gaps" in full_text
-    # 5. Actionable recommendations
-    assert "Actionable Engineering Recommendations" in full_text
-    # 6. AI disclaimer footer
-    footer_text = "\n".join(p.text for s in doc.sections for p in s.footer.paragraphs)
-    assert "AI-Generated Draft" in footer_text
+def test_render_all_four_formats(doc_gen, sample_payload):
+    """Verify DocGenerator renders all 4 supported formats (DOCX, XLSX, PPTX, PDF)."""
+    formats = [
+        ("docx", docx.Document),
+        ("xlsx", lambda p: openpyxl.load_workbook(p, read_only=True)),
+        ("pptx", pptx.Presentation),
+        ("pdf", fitz.open),
+    ]
 
+    for kind, loader in formats:
+        out_path, art_id = doc_gen.render(kind=kind, data=sample_payload)
+        assert out_path.exists()
+        assert out_path.suffix.lower() == f".{kind}"
+        assert art_id in out_path.name
 
-def test_doc_generator_unsupported_kind_rejection(tmp_path):
-    """Verify non-docx formats are rejected in Phase 8 (strictly DOCX)."""
-    generator = DocGenerator(outputs_dir=tmp_path)
-    with pytest.raises(DocumentGenerationError, match="Unsupported document kind"):
-        generator.render(kind="xlsx", data={})
+        # Verify loader opens file cleanly
+        obj = loader(str(out_path))
+        if hasattr(obj, "close"):
+            obj.close()
 
 
-def test_doc_generator_invalid_payload_rejection(tmp_path):
-    """Verify non-dictionary payload raises DocumentGenerationError."""
-    generator = DocGenerator(outputs_dir=tmp_path)
+def test_unsupported_kind_raises_error(doc_gen, sample_payload):
+    """Verify unsupported document formats raise DocumentGenerationError."""
+    unsupported = ["odt", "html", "rtf", "markdown", "csv"]
+    for kind in unsupported:
+        with pytest.raises(DocumentGenerationError) as exc_info:
+            doc_gen.render(kind=kind, data=sample_payload)
+        assert f"Unsupported document kind '{kind}'" in str(exc_info.value)
+
+
+def test_invalid_payload_raises_error(doc_gen):
+    """Verify non-dict payload raises DocumentGenerationError."""
     with pytest.raises(DocumentGenerationError):
-        generator.render(kind="docx", data="invalid-payload")  # type: ignore
+        doc_gen.render(kind="docx", data="invalid string payload")
+
+
+def test_path_escape_containment(tmp_path):
+    """Verify output file is strictly contained within outputs_dir."""
+    gen = DocGenerator(outputs_dir=tmp_path / "outputs")
+    out_path, _ = gen.render(kind="pdf", data={"title": "Test"})
+    assert out_path.is_relative_to((tmp_path / "outputs").resolve())

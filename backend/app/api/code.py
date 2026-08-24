@@ -1,4 +1,4 @@
-﻿"""Direct Code Execution REST API Router (TRD Section 9, Table 17)."""
+"""Direct Code Execution REST API Router (TRD Section 9, Table 17)."""
 
 import logging
 import uuid

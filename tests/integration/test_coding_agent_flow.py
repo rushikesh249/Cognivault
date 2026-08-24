@@ -1,4 +1,4 @@
-﻿"""Hero Flow 2 End-to-End Integration Test (TRD Section 20, Table 44, Test Plan Section 10)."""
+"""Hero Flow 2 End-to-End Integration Test (TRD Section 20, Table 44, Test Plan Section 10)."""
 
 import shutil
 from pathlib import Path
