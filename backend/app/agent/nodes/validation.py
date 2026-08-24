@@ -1,4 +1,4 @@
-﻿"""Stage 7: Validation Node (TRD Section 11.3, Table 30, Table 44, Section 20, ADR-005)."""
+"""Stage 7: Validation Node (TRD Section 11.3, Table 30, Table 44, Table 48, Section 20, Section 21, ADR-005)."""
 
 import logging
 from pathlib import Path
@@ -18,7 +18,7 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
     task_id = state["task_id"]
     task_type = state.get("task_type", "document")
     iteration = state.get("iteration", 1)
-    max_iterations = state.get("max_iterations", 6 if task_type == "coding" else 4)
+    max_iterations = state.get("max_iterations", 6 if task_type == "coding" else (3 if task_type == "vision" else 4))
     current_step_index = state.get("current_step_index", 0)
     plan = state.get("plan", [])
     observations = state.get("observations", [])
@@ -31,7 +31,6 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
 
     # Task-specific validation logic
     if task_type == "coding":
-        # If there are still remaining steps in the current plan, allow execution to proceed
         if current_step_index < len(plan):
             if has_errors:
                 validation_passed = False
@@ -40,7 +39,6 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
                 validation_passed = True
                 validation_notes = "Plan step executed successfully. Proceeding to next step."
         else:
-            # Current plan completed: inspect outcome of the latest test runner execution
             latest_test_obs = None
             for obs in reversed(observations):
                 struct = obs.get("structured_data", {})
@@ -101,6 +99,48 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
                             except Exception as e:
                                 validation_passed = False
                                 validation_notes = f"DOCX verification failed: {e}"
+
+    elif task_type == "vision":
+        # Multimodal Vision Validation (TRD ?18.1, Table 48)
+        if current_step_index < len(plan):
+            if has_errors:
+                validation_passed = False
+                validation_notes = "Vision step encountered fatal errors."
+            else:
+                validation_passed = True
+                validation_notes = "Plan step executed successfully. Proceeding to next step."
+        else:
+            latest_vision_res = None
+            for obs in reversed(observations):
+                struct = obs.get("structured_data", {})
+                if struct.get("type") == "vision" and struct.get("vision_result"):
+                    latest_vision_res = struct.get("vision_result")
+                    break
+
+            if latest_vision_res:
+                obs_list = latest_vision_res.get("observation", [])
+                interp_list = latest_vision_res.get("interpretation", [])
+                uncert_list = latest_vision_res.get("uncertainty", [])
+                model_used = latest_vision_res.get("model_used")
+
+                if not obs_list or len(obs_list) == 0:
+                    validation_passed = False
+                    validation_notes = "VisionResult validation failed: 'observation' array is empty."
+                elif not isinstance(interp_list, list) or not isinstance(uncert_list, list):
+                    validation_passed = False
+                    validation_notes = "VisionResult validation failed: interpretation or uncertainty is not an array."
+                elif not model_used:
+                    validation_passed = False
+                    validation_notes = "VisionResult validation failed: 'model_used' is missing."
+                else:
+                    validation_passed = True
+                    validation_notes = f"Vision findings validated successfully ({len(obs_list)} observations, {len(interp_list)} interpretations, {len(uncert_list)} uncertainties)."
+            elif has_errors:
+                validation_passed = False
+                validation_notes = "Vision workflow encountered execution errors."
+            else:
+                validation_passed = True
+                validation_notes = "Vision workflow completed successfully."
 
     broadcaster = get_event_broadcaster()
     logger.info(f"[{task_id}] Validation check: passed={validation_passed} (iteration {iteration}/{max_iterations}, step {current_step_index}/{len(plan)}, task_type: {task_type})")

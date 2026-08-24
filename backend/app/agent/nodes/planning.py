@@ -1,4 +1,4 @@
-﻿"""Stage 2: Planning Node (TRD Section 11.3, Table 30, Table 44, Section 20, ADR-005)."""
+"""Stage 2: Planning Node (TRD Section 11.3, Table 30, Table 44, Section 20, Section 21, ADR-005)."""
 
 import logging
 from typing import Any, Dict, List
@@ -9,7 +9,7 @@ logger = logging.getLogger("sovereign_workbench.agent.node.planning")
 
 
 def generate_default_plan(task_type: str, goal: str) -> List[str]:
-    """Generate default execution plan based on task_type and goal (TRD Table 44)."""
+    """Generate default execution plan based on task_type and goal (TRD Table 44, Table 48)."""
     if task_type == "document":
         return [
             "Extract findings and anomalies from inspection report",
@@ -24,8 +24,8 @@ def generate_default_plan(task_type: str, goal: str) -> List[str]:
         return ["Execute solution script in sandbox"]
     elif task_type == "vision":
         return [
-            "Inspect input visual features",
-            "Extract visual metrics and synthesize analysis",
+            "Analyze inspection image with local vision-language model",
+            "Extract structured visual observations, interpretations, and uncertainties",
         ]
     return ["Analyze requirements and synthesize deliverable"]
 
@@ -38,7 +38,7 @@ def planning_node(state: AgentState) -> Dict[str, Any]:
     
     # Invariant: iteration counter increments ONLY when entering Planning
     current_iteration = state.get("iteration", 0) + 1
-    max_iterations = state.get("max_iterations", 6 if task_type == "coding" else 4)
+    max_iterations = state.get("max_iterations", 6 if task_type == "coding" else (3 if task_type == "vision" else 4))
 
     logger.info(f"[{task_id}] Executing Planning (iteration {current_iteration}/{max_iterations}, task_type: {task_type})")
 
@@ -49,6 +49,11 @@ def planning_node(state: AgentState) -> Dict[str, Any]:
             plan = [
                 "Generate and apply corrected code to sandbox workspace",
                 "Re-run test suite verification",
+            ]
+        elif task_type == "vision":
+            plan = [
+                "Re-evaluate inspection image with adjusted vision prompt",
+                "Extract structured visual observations, interpretations, and uncertainties",
             ]
         else:
             plan = [

@@ -1,4 +1,4 @@
-﻿from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager
 import logging
 import os
 from pathlib import Path
@@ -18,6 +18,7 @@ from backend.app.api.agent import router as agent_router
 from backend.app.api.events import router as events_router
 from backend.app.api.files import router as files_router
 from backend.app.api.artifacts import router as artifacts_router
+from backend.app.api.vision import router as vision_router
 from backend.app.core.config import settings
 from backend.app.core.logging import setup_logging
 from backend.app.persistence.db import init_db
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
     app_instance.include_router(events_router)
     app_instance.include_router(files_router)
     app_instance.include_router(artifacts_router)
+    app_instance.include_router(vision_router)
 
     return app_instance
 

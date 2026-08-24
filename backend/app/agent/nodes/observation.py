@@ -1,4 +1,4 @@
-﻿"""Stage 6: Observation Node (TRD Section 11.3, Table 30, Section 20.2, ADR-005)."""
+"""Stage 6: Observation Node (TRD Section 11.3, Table 30, Section 20.2, ADR-005)."""
 
 import logging
 import re
@@ -18,12 +18,10 @@ def parse_pytest_failures(stdout: str, stderr: str) -> Dict[str, Any]:
     
     # 1. Extract failing test names
     failing_tests: List[str] = []
-    # Pattern: FAILED path/to/test.py::test_func
     matches = re.findall(r"FAILED\s+([^\s]+)", combined)
     if matches:
-        failing_tests = list(dict.fromkeys(matches))  # deduplicate preserving order
+        failing_tests = list(dict.fromkeys(matches))
     else:
-        # Pattern: FAIL: test_func (module.TestClass)
         matches_alt = re.findall(r"FAIL:\s+([^\s]+)", combined)
         if matches_alt:
             failing_tests = list(dict.fromkeys(matches_alt))
@@ -34,12 +32,10 @@ def parse_pytest_failures(stdout: str, stderr: str) -> Dict[str, Any]:
     if error_lines:
         error_summary = "; ".join(line.strip() for line in error_lines[:3])
     else:
-        # Check for standard Python exception traces
         exc_match = re.search(r"(\w+Error:\s+[^\n]+)", combined)
         if exc_match:
             error_summary = exc_match.group(1).strip()
         else:
-            # Fallback to short summary from short test summary info or tail
             summary_match = re.search(r"=+\s+short test summary info\s+=+\n(.+)", combined)
             if summary_match:
                 error_summary = summary_match.group(1).strip()
@@ -91,7 +87,7 @@ def observation_node(state: AgentState) -> Dict[str, Any]:
                     f"Failing tests: {test_failure['failing_tests']}. "
                     f"Error: {test_failure['error_summary']}"
                 )
-                obs_level = "warn"  # TRD Table 30: Test failure is part of self-correction trace, not fatal crash
+                obs_level = "warn"
             else:
                 content = "Test runner completed successfully. All tests passed (exit_code=0)."
                 obs_level = "info"
@@ -103,6 +99,18 @@ def observation_node(state: AgentState) -> Dict[str, Any]:
         else:
             content = f"Tool '{tool_name}' failed: {raw_res.get('error', 'unknown error')}"
             obs_level = "error"
+
+    elif res_type == "vision":
+        # Multimodal Vision observation handling (TRD ?18.1, Table 48)
+        if success:
+            vr = structured_data.get("vision_result", {})
+            obs_list = vr.get("observation", [])
+            content = f"VLM extracted {len(obs_list)} visual observation(s): {'; '.join(obs_list[:2])}"
+            obs_level = "info"
+        else:
+            content = f"Vision analysis failed: {structured_data.get('error', 'unknown error')}"
+            obs_level = "error"
+
     else:
         content = raw_res.get("output", "Model step completed successfully.")
         obs_level = "info"

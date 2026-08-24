@@ -35,7 +35,7 @@ class ModelProvider(ABC):
 
     @abstractmethod
     def ensure_loaded(self, model_id: str) -> bool:
-        """Ensure the model is loaded in memory/VRAM before inference (TRD §15.1)."""
+        """Ensure the model is loaded in memory/VRAM before inference (TRD ?15.1)."""
         pass
 
     @abstractmethod
@@ -45,5 +45,18 @@ class ModelProvider(ABC):
 
     @abstractmethod
     def unload_lru(self) -> bool:
-        """Unload the least recently used model when VRAM is constrained (TRD §15.1)."""
+        """Unload the least recently used model when VRAM is constrained (TRD ?15.1)."""
+        pass
+
+    @abstractmethod
+    def generate(
+        self,
+        model_id: str,
+        prompt: str,
+        images: Optional[List[str]] = None,
+        system: Optional[str] = None,
+        format: Optional[str] = None,
+        stream: bool = False,
+    ) -> str:
+        """Generate text/JSON from local model with optional multimodal image inputs."""
         pass

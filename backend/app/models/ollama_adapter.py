@@ -1,4 +1,4 @@
-"""Ollama local model provider adapter (TRD §13, §15, ADR-002)."""
+"""Ollama local model provider adapter (TRD ?13, ?15, ADR-002)."""
 
 import logging
 import time
@@ -42,7 +42,7 @@ class OllamaAdapter(ModelProvider):
         return tag
 
     def _probe_tags(self, force: bool = False) -> None:
-        """Probe /api/tags cached for cache_ttl_s (TRD §15.1, ADR-002)."""
+        """Probe /api/tags cached for cache_ttl_s (TRD ?15.1, ADR-002)."""
         now = time.time()
         if not force and (now - self._last_probe_time) < self._cache_ttl_s:
             return
@@ -111,7 +111,7 @@ class OllamaAdapter(ModelProvider):
         return sorted(list(self._cached_available_tags))
 
     def ensure_loaded(self, model_id: str) -> bool:
-        """Sequential load: load model via Ollama local API (TRD §15.1)."""
+        """Sequential load: load model via Ollama local API (TRD ?15.1)."""
         if not self.is_provider_available():
             raise ProviderUnavailable(f"Cannot load model '{model_id}': local provider is unavailable")
         if not self.is_model_available(model_id):
@@ -125,15 +125,56 @@ class OllamaAdapter(ModelProvider):
         return True
 
     def unload(self, model_id: str) -> bool:
-        """Unload model via keep_alive=0 (TRD §15.1)."""
+        """Unload model via keep_alive=0 (TRD ?15.1)."""
         clean_id = self._normalize_tag(model_id)
         if clean_id in self._loaded_models:
             self._loaded_models.remove(clean_id)
         return True
 
     def unload_lru(self) -> bool:
-        """Unload least recently used model when VRAM is constrained (TRD §15.1)."""
+        """Unload least recently used model when VRAM is constrained (TRD ?15.1)."""
         if not self._loaded_models:
             return False
         lru_model = self._loaded_models.pop(0)
         return self.unload(lru_model)
+
+    def generate(
+        self,
+        model_id: str,
+        prompt: str,
+        images: Optional[List[str]] = None,
+        system: Optional[str] = None,
+        format: Optional[str] = None,
+        stream: bool = False,
+    ) -> str:
+        """Execute local generate call against Ollama /api/generate (ADR-002)."""
+        clean_model = self._normalize_tag(model_id)
+        if not self.is_provider_available():
+            raise ProviderUnavailable(f"Cannot generate from '{model_id}': local provider is unavailable")
+        if not self.is_model_available(clean_model):
+            raise ModelUnavailable(f"Model '{clean_model}' is not pulled locally")
+
+        payload: dict = {
+            "model": clean_model,
+            "prompt": prompt,
+            "stream": stream,
+        }
+        if images:
+            payload["images"] = images
+        if system:
+            payload["system"] = system
+        if format:
+            payload["format"] = format
+
+        url = f"{self._base_url}/api/generate"
+        try:
+            resp = self._client.post(url, json=payload)
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("response", "")
+            else:
+                logger.error(f"Ollama generate returned status {resp.status_code}: {resp.text}")
+                raise ModelLoadError(f"Ollama generation failed with status {resp.status_code}: {resp.text}")
+        except httpx.RequestError as e:
+            logger.error(f"Ollama connection error during generation on {url}: {e}")
+            raise ProviderUnavailable(f"Ollama connection error: {e}") from e
