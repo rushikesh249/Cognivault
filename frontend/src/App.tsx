@@ -1,92 +1,108 @@
-﻿import React, { useEffect, useState } from 'react';
-import './App.css';
-
-interface HealthStatus {
-  status: string;
-  app: string;
-  version: string;
-}
+import React, { useState } from 'react';
+import { Header } from './components/layout/Header';
+import { Navigation } from './components/layout/Navigation';
+import type { TabKey } from './components/layout/Navigation';
+import { StatusBar } from './components/layout/StatusBar';
+import { TaskCreator } from './components/agent/TaskCreator';
+import { GraphVisualizer } from './components/agent/GraphVisualizer';
+import { LiveEventFeed } from './components/agent/LiveEventFeed';
+import { TaskSummaryCard } from './components/agent/TaskSummaryCard';
+import { HeroFlowLauncher } from './components/hero/HeroFlowLauncher';
+import { VisionInspector } from './components/vision/VisionInspector';
+import { ArtifactExplorer } from './components/artifacts/ArtifactExplorer';
+import { SovereigntyDashboard } from './components/sovereignty/SovereigntyDashboard';
+import { useSovereignty } from './hooks/useSovereignty';
+import { useTaskStream } from './hooks/useTaskStream';
+import './styles/workbench.css';
 
 export const App: React.FC = () => {
-  const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>('workspace');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch('/api/health')
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! Status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((data: HealthStatus) => {
-        setHealth(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, []);
+  // Live telemetry hook
+  const { data: sovereignty } = useSovereignty(5000);
+
+  // Live agent execution stream hook
+  const {
+    events,
+    activeNode,
+    completedNodes,
+    iteration,
+    maxIterations,
+    isStreaming,
+    finalStatus,
+    taskDetail,
+    reconnectCount,
+  } = useTaskStream(selectedTaskId);
+
+  const handleTaskCreated = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setActiveTab('workspace');
+  };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#0f172a',
-      color: '#f8fafc',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem'
-    }}>
-      <div style={{
-        backgroundColor: '#1e293b',
-        border: '1px solid #334155',
-        borderRadius: '8px',
-        padding: '2.5rem',
-        maxWidth: '540px',
-        width: '100%',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)'
-      }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: '#38bdf8' }}>
-          Sovereign AI Workbench
-        </h1>
-        <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: '0 0 1.5rem 0' }}>
-          Phase 0 — Environment & Repository Foundation
-        </p>
+    <div className="workbench-shell">
+      {/* Top Header */}
+      <Header sovereignty={sovereignty} />
 
-        <div style={{
-          backgroundColor: '#0f172a',
-          borderRadius: '6px',
-          padding: '1rem',
-          border: '1px solid #1e293b',
-          fontSize: '0.875rem'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ color: '#64748b' }}>Backend Status:</span>
-            <span>
-              {loading && <span style={{ color: '#eab308' }}>Probing backend...</span>}
-              {error && <span style={{ color: '#ef4444' }}>Offline ({error})</span>}
-              {health && <span style={{ color: '#22c55e' }}>● {health.status.toUpperCase()}</span>}
-            </span>
-          </div>
-          {health && (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ color: '#64748b' }}>App:</span>
-                <span style={{ color: '#f1f5f9' }}>{health.app}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Version:</span>
-                <span style={{ color: '#f1f5f9' }}>{health.version}</span>
-              </div>
-            </>
-          )}
+      {/* Main Content Area */}
+      <main className="workbench-main">
+        {/* Navigation Tabs */}
+        <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+          <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
-      </div>
+
+        {/* Tab 1: Agent Workbench */}
+        {activeTab === 'workspace' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className="grid-2col">
+              <TaskCreator onTaskCreated={handleTaskCreated} disabled={isStreaming} />
+              <TaskSummaryCard
+                task={taskDetail}
+                finalStatus={finalStatus}
+                onViewArtifacts={() => setActiveTab('artifacts')}
+              />
+            </div>
+
+            {/* 8-Stage Execution Visualizer */}
+            <GraphVisualizer
+              activeNode={activeNode}
+              completedNodes={completedNodes}
+              iteration={iteration}
+              maxIterations={maxIterations}
+              finalStatus={finalStatus}
+              isStreaming={isStreaming}
+            />
+
+            {/* Real-time SSE Stream Event Feed */}
+            <LiveEventFeed
+              events={events}
+              isStreaming={isStreaming}
+              reconnectCount={reconnectCount}
+            />
+          </div>
+        )}
+
+        {/* Tab 2: Hero Flows Quickstart */}
+        {activeTab === 'heroes' && (
+          <HeroFlowLauncher onLaunchHeroFlow={handleTaskCreated} />
+        )}
+
+        {/* Tab 3: Multimodal Vision Inspector */}
+        {activeTab === 'vision' && <VisionInspector />}
+
+        {/* Tab 4: Sovereignty & Air-Gap Dashboard */}
+        {activeTab === 'sovereignty' && <SovereigntyDashboard />}
+
+        {/* Tab 5: Deliverables & Artifacts Catalog */}
+        {activeTab === 'artifacts' && <ArtifactExplorer />}
+      </main>
+
+      {/* Bottom Live Status Bar */}
+      <StatusBar
+        sovereignty={sovereignty}
+        activeModel={taskDetail?.model_used}
+      />
     </div>
   );
 };
