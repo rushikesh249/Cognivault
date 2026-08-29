@@ -299,10 +299,11 @@ def render_pdf_report(data: Dict[str, Any], output_path: Path) -> Path:
     story.append(Spacer(1, 10))
 
     # 7. Section 5: Engineering Review Sign-off Block
+    prep_status = data.get("status") or "Analyzed on-premise"
     sign_table_data = [
         [
-            Paragraph("<b>Prepared Autonomously By:</b><br/>Sovereign AI Workbench (General Model Agent)", body_style),
-            Paragraph("<b>Reviewed & Endorsed By:</b><br/><br/>___________________________________<br/>Lead Mechanical Maintenance Engineer", body_style),
+            Paragraph(f"<b>Prepared Autonomously By:</b><br/>Sovereign AI Workbench ({prep_status})", body_style),
+            Paragraph("<b>Reviewed & Endorsed By:</b><br/><br/>___________________________________<br/>Lead Technical Reviewer", body_style),
         ]
     ]
     sign_table = Table(sign_table_data, colWidths=[3.5 * inch, 3.5 * inch])

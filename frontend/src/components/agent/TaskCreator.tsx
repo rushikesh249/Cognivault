@@ -166,7 +166,12 @@ export const TaskCreator: React.FC<TaskCreatorProps> = ({ onTaskCreated, disable
               accept=".pdf,.png,.jpg,.jpeg"
               onChange={(e) => {
                 if (e.target.files && e.target.files[0]) {
-                  setSelectedFile(e.target.files[0]);
+                  const file = e.target.files[0];
+                  setSelectedFile(file);
+                  const fn = file.name.toLowerCase();
+                  if (fn.endsWith('.jpg') || fn.endsWith('.jpeg') || fn.endsWith('.png')) {
+                    setTaskType('vision');
+                  }
                 }
               }}
               disabled={disabled || loading}

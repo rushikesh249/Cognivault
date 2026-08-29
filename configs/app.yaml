@@ -14,7 +14,7 @@ paths:
 ollama:
   host: 127.0.0.1
   port: 11434
-  timeout_s: 10.0
+  timeout_s: 120.0
   cache_ttl_s: 10.0
 routing:
   task_requirements:

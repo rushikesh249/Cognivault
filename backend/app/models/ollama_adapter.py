@@ -18,7 +18,7 @@ class OllamaAdapter(ModelProvider):
     def __init__(
         self,
         base_url: str = "http://127.0.0.1:11434",
-        timeout_s: float = 10.0,
+        timeout_s: float = 120.0,
         cache_ttl_s: float = 10.0,
         http_client: Optional[httpx.Client] = None,
     ):
@@ -167,11 +167,20 @@ class OllamaAdapter(ModelProvider):
             payload["format"] = format
 
         url = f"{self._base_url}/api/generate"
+        logger.info(
+            f"[OLLAMA_HTTP_REQUEST] POST {url} | model='{clean_model}' | "
+            f"images={len(images) if images else 0} | format='{format}'"
+        )
         try:
-            resp = self._client.post(url, json=payload)
+            resp = self._client.post(url, json=payload, timeout=max(self._timeout_s, 120.0))
             if resp.status_code == 200:
                 data = resp.json()
-                return data.get("response", "")
+                response_text = data.get("response", "")
+                logger.info(
+                    f"[OLLAMA_HTTP_SUCCESS] 200 OK from {url} | "
+                    f"model='{clean_model}' | response_len={len(response_text)}"
+                )
+                return response_text
             else:
                 logger.error(f"Ollama generate returned status {resp.status_code}: {resp.text}")
                 raise ModelLoadError(f"Ollama generation failed with status {resp.status_code}: {resp.text}")

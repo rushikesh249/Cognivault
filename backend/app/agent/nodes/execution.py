@@ -14,6 +14,20 @@ from backend.app.tools.tool_registry import get_tool_registry
 logger = logging.getLogger("sovereign_workbench.agent.node.execution")
 
 
+from backend.app.persistence.artifact_repository import ArtifactRepository
+from backend.app.persistence.models import FileORM
+from backend.app.persistence.task_repository import TaskRepository
+
+
+def _task_title(task_id: str) -> Optional[str]:
+    try:
+        with get_db_context() as session:
+            task = TaskRepository(session).get_by_id(task_id)
+            return task.title if task else None
+    except Exception:
+        return None
+
+
 def execution_node(state: AgentState) -> Dict[str, Any]:
     """Execution node: executes selected tool via ToolRegistry or runs model/vision inference."""
     task_id = state["task_id"]
@@ -73,69 +87,190 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
             )
     else:
         # Direct local model reasoning synthesis or multimodal Vision execution
-        model_id = state.get("selected_model_id") or "local-default"
+        model_id = state.get("selected_model_id") or ("local-vision-model" if task_type == "vision" else "local-general-model")
         duration_ms = int((time.time() - start_time) * 1000)
+        plan = state.get("plan", [])
+        step_idx = state.get("current_step_index", 0)
+        current_step = plan[step_idx] if step_idx < len(plan) else ""
+        step_lower = current_step.lower()
 
         if task_type == "vision":
-            # Multimodal Vision Analysis execution (TRD ?18, ?21, Table 48)
-            attached_file_id: Optional[str] = None
-            with get_db_context() as session:
-                repo = FileRepository(session)
-                task_files = repo.list_by_task_id(task_id)
-                if task_files:
-                    attached_file_id = task_files[0].file_id
-
-            if not attached_file_id:
-                # Check for existing image uploads in uploads dir
-                for f in settings.paths.uploads_dir.glob("*"):
-                    if f.suffix.lower() in [".jpg", ".jpeg", ".png"]:
-                        attached_file_id = f.stem
+            if "artifact" in step_lower or "generate" in step_lower or "docx" in step_lower or "pdf" in step_lower or "report" in step_lower:
+                # Step: Visual inspection report deliverable generation
+                latest_vision_res = None
+                for obs in reversed(state.get("observations", [])):
+                    struct = obs.get("structured_data", {})
+                    if struct.get("type") == "vision" and struct.get("vision_result"):
+                        latest_vision_res = struct.get("vision_result")
                         break
 
-            try:
-                from backend.app.services.vision_service import get_vision_app_service
-                vision_app = get_vision_app_service()
-                if attached_file_id:
-                    v_res = vision_app.analyze_file(file_id=attached_file_id, prompt=state.get("goal"))
+                if not latest_vision_res:
                     raw_result = {
-                        "type": "vision",
-                        "model_id": model_id,
-                        "success": True,
-                        "vision_result": v_res.model_dump(),
-                    }
-                    broadcaster.log_and_emit(
-                        task_id=task_id,
-                        node="execution",
-                        message=f"Completed multimodal VLM analysis via '{model_id}' on image '{attached_file_id}'.",
-                        level="info",
-                    )
-                else:
-                    raw_result = {
-                        "type": "vision",
-                        "model_id": model_id,
+                        "type": "tool",
+                        "tool_name": "create_docx",
                         "success": False,
-                        "error": "No image file attached for vision task.",
+                        "error": "No visual inspection observations available to generate report.",
+                        "execution_status": "error",
+                        "error_type": "missing_vision_findings",
+                    }
+                else:
+                    obs_list = latest_vision_res.get("observation", [])
+                    interp_list = latest_vision_res.get("interpretation", [])
+                    uncert_list = latest_vision_res.get("uncertainty", [])
+                    vision_model_used = latest_vision_res.get("model_used") or "local-vision-model"
+
+                    # Resolve source image filename
+                    source_doc = "uploaded image"
+                    with get_db_context() as session:
+                        repo = FileRepository(session)
+                        task_files = repo.list_by_task_id(task_id)
+                        if task_files:
+                            source_doc = task_files[0].filename
+
+                    task_title = _task_title(task_id) or "Visual Inspection Analysis Report"
+
+                    sections = [
+                        {"heading": "Visual Observations", "content": obs_list},
+                        {"heading": "Engineering Interpretations & Hypotheses", "content": interp_list},
+                        {"heading": "Uncertainties & Inspection Limitations", "content": uncert_list},
+                    ]
+
+                    doc_payload = {
+                        "title": task_title,
+                        "task_id": task_id,
+                        "source_document": source_doc,
+                        "facility": f"Source image: {source_doc}",
+                        "status": f"Analyzed via {vision_model_used} (on-premise)",
+                        "summary": "; ".join(obs_list) if obs_list else "Visual inspection completed.",
+                        "sections": sections,
+                        "sources": [f"Uploaded image: {source_doc}"],
+                        "grounding_note": "All findings in this report are grounded exclusively in visual features extracted via local-vision-model. No statutory certification or certified inspection verdict is implied.",
+                        "template": "structured_report",
+                    }
+
+                    out_kind = "pdf" if "pdf" in step_lower else "docx"
+                    try:
+                        from backend.app.documents.doc_generator import get_doc_generator
+                        doc_gen = get_doc_generator()
+                        out_path, artifact_id = doc_gen.render(kind=out_kind, data=doc_payload)
+
+                        with get_db_context() as session:
+                            art_repo = ArtifactRepository(session)
+                            art_repo.create(
+                                artifact_id=artifact_id,
+                                task_id=task_id,
+                                kind=out_kind,
+                                title=task_title,
+                                storage_path=str(out_path.resolve()),
+                                sources=[f"Uploaded image: {source_doc}"],
+                            )
+
+                        raw_result = {
+                            "type": "tool",
+                            "tool_name": f"create_{out_kind}",
+                            "success": True,
+                            "artifact_id": artifact_id,
+                            "output": f"Generated {out_kind.upper()} visual inspection report {artifact_id}",
+                        }
+                        broadcaster.log_and_emit(
+                            task_id=task_id,
+                            node="execution",
+                            message=f"Generated visual inspection report artifact '{artifact_id}' ({out_kind.upper()}).",
+                            level="info",
+                        )
+                    except Exception as e:
+                        logger.error(f"[{task_id}] Failed generating visual inspection artifact: {e}", exc_info=True)
+                        raw_result = {
+                            "type": "tool",
+                            "tool_name": f"create_{out_kind}",
+                            "success": False,
+                            "error": str(e),
+                            "execution_status": "error",
+                            "error_type": "artifact_generation_error",
+                        }
+                        broadcaster.log_and_emit(
+                            task_id=task_id,
+                            node="execution",
+                            message=f"Failed generating visual inspection artifact: {e}",
+                            level="error",
+                        )
+            else:
+                # Step: Multimodal Vision Analysis execution (TRD §18, §21, Table 48)
+                attached_file_id: Optional[str] = None
+                source_filename: str = "attached image"
+                with get_db_context() as session:
+                    repo = FileRepository(session)
+                    task_files = repo.list_by_task_id(task_id)
+                    if task_files:
+                        attached_file_id = task_files[0].file_id
+                        source_filename = task_files[0].filename
+                    else:
+                        recent_image = (
+                            session.query(FileORM)
+                            .filter(FileORM.mime_type.like("image/%"))
+                            .order_by(FileORM.uploaded_at.desc())
+                            .first()
+                        )
+                        if recent_image:
+                            attached_file_id = recent_image.file_id
+                            source_filename = recent_image.filename
+                            repo.attach_to_task(attached_file_id, task_id)
+
+                if not attached_file_id:
+                    for f in settings.paths.uploads_dir.glob("*"):
+                        if f.suffix.lower() in [".jpg", ".jpeg", ".png"]:
+                            attached_file_id = f.stem
+                            source_filename = f.name
+                            break
+
+                try:
+                    from backend.app.services.vision_service import get_vision_app_service
+                    vision_app = get_vision_app_service()
+                    if attached_file_id:
+                        v_res = vision_app.analyze_file(file_id=attached_file_id, prompt=state.get("goal"))
+                        raw_result = {
+                            "type": "vision",
+                            "model_id": "local-vision-model",
+                            "success": True,
+                            "vision_result": v_res.model_dump(),
+                        }
+                        broadcaster.log_and_emit(
+                            task_id=task_id,
+                            node="execution",
+                            message=f"Completed multimodal VLM analysis via 'local-vision-model' on image '{source_filename}'.",
+                            level="info",
+                        )
+                    else:
+                        raw_result = {
+                            "type": "vision",
+                            "model_id": "local-vision-model",
+                            "success": False,
+                            "error": "No image file attached for vision task.",
+                            "execution_status": "error",
+                            "error_type": "missing_image_file",
+                        }
+                        broadcaster.log_and_emit(
+                            task_id=task_id,
+                            node="execution",
+                            message="No image file attached for vision task.",
+                            level="error",
+                        )
+                except Exception as e:
+                    logger.error(f"[{task_id}] Multimodal vision execution error: {e}", exc_info=True)
+                    raw_result = {
+                        "type": "vision",
+                        "model_id": "local-vision-model",
+                        "success": False,
+                        "error": str(e),
+                        "execution_status": "error",
+                        "error_type": "model_unavailable" if "unavailable" in str(e).lower() else "vision_error",
                     }
                     broadcaster.log_and_emit(
                         task_id=task_id,
                         node="execution",
-                        message="No image file attached for vision task.",
+                        message=f"Multimodal vision execution failed: {e}",
                         level="error",
                     )
-            except Exception as e:
-                logger.error(f"[{task_id}] Multimodal vision execution error: {e}", exc_info=True)
-                raw_result = {
-                    "type": "vision",
-                    "model_id": model_id,
-                    "success": False,
-                    "error": str(e),
-                }
-                broadcaster.log_and_emit(
-                    task_id=task_id,
-                    node="execution",
-                    message=f"Multimodal vision execution failed: {e}",
-                    level="error",
-                )
         else:
             if task_type == "document":
                 # Grounded document analysis: the uploaded document's extracted

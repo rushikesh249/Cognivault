@@ -18,7 +18,7 @@ def generate_default_plan(task_type: str, goal: str) -> List[str]:
             format_step = "Generate management summary deck PPTX artifact"
         elif "pdf" in goal_lower:
             format_step = "Generate technical report PDF artifact"
-        elif "approval note" in goal_lower or "compliance" in goal_lower:
+        elif "approval note" in goal_lower:
             format_step = "Generate technical Approval Note DOCX artifact"
         else:
             format_step = "Generate structured analysis report DOCX artifact"
@@ -38,6 +38,17 @@ def generate_default_plan(task_type: str, goal: str) -> List[str]:
             return ["Execute test suite to detect failures"]
         return ["Execute solution script in sandbox"]
     elif task_type == "vision":
+        goal_lower = (goal or "").lower()
+        if "pdf" in goal_lower:
+            return [
+                "Analyze inspection image with local vision-language model",
+                "Generate visual inspection report PDF artifact",
+            ]
+        elif "docx" in goal_lower or "report" in goal_lower or "artifact" in goal_lower or "document" in goal_lower:
+            return [
+                "Analyze inspection image with local vision-language model",
+                "Generate visual inspection report DOCX artifact",
+            ]
         return [
             "Analyze inspection image with local vision-language model",
             "Extract structured visual observations, interpretations, and uncertainties",

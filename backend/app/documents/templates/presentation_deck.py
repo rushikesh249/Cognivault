@@ -368,7 +368,8 @@ def render_presentation_deck(data: Dict[str, Any], output_path: Path) -> Path:
     p_sh.font.color.rgb = COLOR_NAVY
 
     p_prep = tf_s.add_paragraph()
-    p_prep.text = "Prepared By:\nSovereign AI Workbench\n(General Model Agent)"
+    prep_status = data.get("status") or "Analyzed on-premise"
+    p_prep.text = f"Prepared By:\nSovereign AI Workbench\n({prep_status})"
     p_prep.font.name = FONT_BODY
     p_prep.font.size = Pt(10)
     p_prep.font.color.rgb = COLOR_DARK_TEXT

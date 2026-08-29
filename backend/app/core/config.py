@@ -25,7 +25,7 @@ class AppPaths(BaseModel):
 class OllamaSettings(BaseModel):
     host: str = "127.0.0.1"
     port: int = 11434
-    timeout_s: float = 10.0
+    timeout_s: float = 120.0
     cache_ttl_s: float = 10.0
 
     @property

@@ -218,8 +218,9 @@ def render_approval_note(
     sign_table.autofit = False
 
     s0, s1 = sign_table.rows[0].cells[0], sign_table.rows[0].cells[1]
-    s0.paragraphs[0].add_run("Prepared Autonomously By:\nSovereign AI Workbench (General Model Agent)").font.size = Pt(9)
-    s1.paragraphs[0].add_run("Reviewed & Endorsed By:\n____________________________\nLead Mechanical Maintenance Engineer").font.size = Pt(9)
+    prep_status = data.get("status") or "Analyzed on-premise"
+    s0.paragraphs[0].add_run(f"Prepared Autonomously By:\nSovereign AI Workbench\n({prep_status})").font.size = Pt(9)
+    s1.paragraphs[0].add_run("Reviewed & Endorsed By:\n____________________________\nLead Technical Reviewer").font.size = Pt(9)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(output_path))

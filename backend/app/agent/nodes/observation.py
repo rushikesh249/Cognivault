@@ -247,8 +247,13 @@ def observation_node(state: AgentState) -> Dict[str, Any]:
         level=obs_level,
     )
 
-    return {
+    res_dict: Dict[str, Any] = {
         "observations": [obs_record],
         "current_step_index": next_step_idx,
         "_raw_execution_result": None,
     }
+    artifact_id = raw_res.get("artifact_id") or (raw_res.get("data") or {}).get("artifact_id")
+    if artifact_id:
+        res_dict["final_artifact_id"] = artifact_id
+
+    return res_dict

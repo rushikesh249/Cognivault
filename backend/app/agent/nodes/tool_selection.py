@@ -16,11 +16,11 @@ logger = logging.getLogger("sovereign_workbench.agent.node.tool_selection")
 
 # Tokens identifying compliance/approval-note style document goals. Everything
 # else is treated as a grounded structured-analysis report.
-_APPROVAL_GOAL_MARKERS = ("approval note", "compliance", "inspection report", "sop")
+_APPROVAL_GOAL_MARKERS = ("approval note", "technical approval", "compliance approval", "sop compliance note")
 
 
 def is_approval_note_goal(goal: str) -> bool:
-    """Return True when the document goal requests a compliance/approval-note style deliverable."""
+    """Return True when the document goal explicitly requests a compliance/approval-note style deliverable."""
     goal_lower = (goal or "").lower()
     return any(marker in goal_lower for marker in _APPROVAL_GOAL_MARKERS)
 

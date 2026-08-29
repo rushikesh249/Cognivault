@@ -196,6 +196,13 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
 
     elif task_type == "vision":
         # Multimodal Vision Validation (TRD §18.1, Table 48)
+        if not artifact_id:
+            for obs in reversed(observations):
+                struct = obs.get("structured_data", {})
+                if struct.get("artifact_id"):
+                    artifact_id = struct.get("artifact_id")
+                    break
+
         if current_step_index < len(plan):
             if has_errors:
                 validation_passed = False
@@ -226,9 +233,41 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
                 elif not model_used:
                     validation_passed = False
                     validation_notes = "VisionResult validation failed: 'model_used' is missing."
+                elif model_used != "local-vision-model":
+                    validation_passed = False
+                    validation_notes = f"Vision task must be analyzed via 'local-vision-model', but got '{model_used}'."
                 else:
-                    validation_passed = True
-                    validation_notes = f"Vision findings validated successfully ({len(obs_list)} observations, {len(interp_list)} interpretations, {len(uncert_list)} uncertainties)."
+                    if artifact_id:
+                        art_storage_path = None
+                        art_kind = None
+                        with get_db_context() as session:
+                            art = ArtifactRepository(session).get_by_id(artifact_id)
+                            if art:
+                                art_storage_path = art.storage_path
+                                art_kind = art.kind
+
+                        if art_storage_path and Path(art_storage_path).exists():
+                            if art_kind == "docx":
+                                doc_obj = docx.Document(art_storage_path)
+                                doc_text = " ".join(p.text for p in doc_obj.paragraphs)
+                                if "local-general-model" in doc_text:
+                                    validation_passed = False
+                                    validation_notes = "DOCX artifact contains invalid model reference 'local-general-model' for vision task."
+                                elif "Visual Observations" not in doc_text and "Visual Inspection" not in doc_text:
+                                    validation_passed = False
+                                    validation_notes = "DOCX artifact missing required visual observation section."
+                                else:
+                                    validation_passed = True
+                                    validation_notes = f"Vision findings and DOCX deliverable validated successfully ({len(obs_list)} observations)."
+                            else:
+                                validation_passed = True
+                                validation_notes = "Vision deliverable artifact validated successfully."
+                        else:
+                            validation_passed = False
+                            validation_notes = f"Artifact '{artifact_id}' not found on disk."
+                    else:
+                        validation_passed = True
+                        validation_notes = f"Vision findings validated successfully ({len(obs_list)} observations, {len(interp_list)} interpretations, {len(uncert_list)} uncertainties)."
             elif has_errors:
                 validation_passed = False
                 validation_notes = "Vision workflow encountered execution errors."

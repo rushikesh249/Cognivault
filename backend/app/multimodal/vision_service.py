@@ -178,6 +178,11 @@ class VisionService:
 
         target_model = model_path or model_id
 
+        logger.info(
+            f"[VLM_INFERENCE_START] Model: '{target_model}', Image: '{image_path.name}' "
+            f"({image_path.stat().st_size} bytes, b64_len={len(b64_image)})"
+        )
+
         try:
             raw_response = self._provider.generate(
                 model_id=target_model,
@@ -186,6 +191,7 @@ class VisionService:
                 system=VISION_SYSTEM_PROMPT,
                 format="json",
             )
+            logger.info(f"[VLM_INFERENCE_RESPONSE] Raw Response: {raw_response[:300]}")
         except (ModelUnavailable, ProviderUnavailable) as e:
             logger.error(f"Local VLM '{target_model}' is unavailable: {e}")
             raise VisionModelUnavailableError(f"Local vision model unavailable: {e}") from e
