@@ -15,7 +15,7 @@ logger = logging.getLogger("sovereign_workbench.tools.ocr")
 
 class ExtractTextInput(BaseModel):
     file_id: str = Field(..., min_length=1, description="Uploaded document file identifier or relative path")
-    page: int = Field(default=1, ge=1, description="1-indexed document page number")
+    page: int = Field(default=1, ge=0, description="1-indexed page number; 0 extracts the full document text")
 
 
 class ExtractTextOutput(BaseModel):
@@ -66,6 +66,14 @@ class ExtractTextFromScanTool(BaseTool):
         ocr_svc = get_ocr_service()
         try:
             doc_result = ocr_svc.extract(target_path)
+            # page=0 requests the full document text (multi-page grounding)
+            if input_data.page == 0:
+                page_confidences = [p.ocr_confidence for p in doc_result.pages]
+                avg_conf = sum(page_confidences) / len(page_confidences) if page_confidences else 0.9
+                return ExtractTextOutput(
+                    text=doc_result.full_text,
+                    confidence=round(avg_conf, 2),
+                )
             # Find requested page (1-indexed)
             if input_data.page <= len(doc_result.pages):
                 page_res = doc_result.pages[input_data.page - 1]

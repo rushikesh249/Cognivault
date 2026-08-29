@@ -10,6 +10,7 @@ from backend.app.documents.templates.approval_note import render_approval_note
 from backend.app.documents.templates.pdf_report import render_pdf_report
 from backend.app.documents.templates.presentation_deck import render_presentation_deck
 from backend.app.documents.templates.spreadsheet_report import render_spreadsheet_report
+from backend.app.documents.templates.structured_report import render_structured_report
 
 logger = logging.getLogger("sovereign_workbench.documents.generator")
 
@@ -62,7 +63,12 @@ class DocGenerator:
 
         try:
             if normalized_kind == "docx":
-                render_approval_note(data, target_path)
+                if data.get("template") == "approval_note":
+                    render_approval_note(data, target_path)
+                elif data.get("template") == "structured_report" or "sections" in data:
+                    render_structured_report(data, target_path)
+                else:
+                    render_approval_note(data, target_path)
             elif normalized_kind == "xlsx":
                 render_spreadsheet_report(data, target_path)
             elif normalized_kind == "pptx":

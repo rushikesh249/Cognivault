@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from backend.app.persistence.db import Base
+from backend.app.persistence.file_repository import FileRepository
 from backend.app.services.task_service import (
     InvalidTaskPayloadError,
     TaskNotFoundError,
@@ -25,6 +26,17 @@ def temp_service():
 
 
 def test_service_create_and_get(temp_service):
+    # Pre-register an uploaded file so task creation can link it
+    file_repo = FileRepository(temp_service._session)
+    file_obj = file_repo.create(
+        file_id="f_123",
+        filename="report.pdf",
+        mime_type="application/pdf",
+        size_bytes=1024,
+        storage_path="data/uploads/f_123.pdf",
+    )
+    assert file_obj.task_id is None
+
     res = temp_service.create_task(
         title="Document Intelligence",
         task_type="document",
@@ -35,9 +47,24 @@ def test_service_create_and_get(temp_service):
     assert res["status"] == "created"
     assert res["file_ids"] == ["f_123"]
 
+    # The uploaded file must now be linked to the created task
+    linked = file_repo.get_by_id("f_123")
+    assert linked.task_id == res["task_id"]
+
     detail = temp_service.get_task(res["task_id"])
     assert detail["task_id"] == res["task_id"]
     assert detail["title"] == "Document Intelligence"
+
+
+def test_service_create_with_unknown_file_id_skips_gracefully(temp_service):
+    res = temp_service.create_task(
+        title="Document Intelligence",
+        task_type="document",
+        prompt="Extract findings from report",
+        file_ids=["nonexistent-file-id"],
+    )
+    assert res["task_id"] is not None
+    assert res["file_ids"] == []
 
 
 def test_service_invalid_payload_raises(temp_service):

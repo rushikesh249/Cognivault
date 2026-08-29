@@ -357,6 +357,11 @@ body {
   border-color: var(--status-success);
 }
 
+.graph-node.warning {
+  background-color: #2b2011;
+  border-color: var(--status-warning);
+}
+
 .graph-node.error {
   background-color: #31181f;
   border-color: var(--status-error);

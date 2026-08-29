@@ -75,7 +75,7 @@ def render_approval_note(
     # 1. Title Block
     title_p = doc.add_paragraph()
     title_p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    title_run = title_p.add_run(data.get("title", "TECHNICAL APPROVAL NOTE: EQUIPMENT INSPECTION COMPLIANCE"))
+    title_run = title_p.add_run(data.get("title", "TECHNICAL APPROVAL NOTE: DOCUMENT COMPLIANCE REVIEW"))
     title_run.font.size = Pt(18)
     title_run.font.bold = True
     title_run.font.color.rgb = RGBColor(16, 44, 87)  # Deep Navy
@@ -86,10 +86,10 @@ def render_approval_note(
     meta_table.autofit = False
 
     meta_items = [
-        ("Task ID / Ref:", str(data.get("task_id", "TASK-AUTONOMOUS-01"))),
-        ("Facility / Unit:", str(data.get("facility", "Primary Refining Unit & Flare Header"))),
+        ("Task ID / Ref:", str(data.get("task_id", "N/A"))),
+        ("Facility / Source:", str(data.get("facility", f"Source: {data.get('source_document', 'Uploaded Document')}"))),
         ("Generated Timestamp (UTC):", str(data.get("timestamp", datetime.datetime.now(datetime.timezone.utc).isoformat()))),
-        ("Evaluation Status:", str(data.get("status", "ACTION REQUIRED — NON-COMPLIANCE DETECTED"))),
+        ("Evaluation Status:", str(data.get("status", "Analyzed via Local Model (On-Premise)"))),
     ]
 
     for idx, (label, val) in enumerate(meta_items):
@@ -107,7 +107,7 @@ def render_approval_note(
         p1 = c1.paragraphs[0]
         r1 = p1.add_run(val)
         r1.font.size = Pt(9.5)
-        if "ACTION REQUIRED" in val:
+        if "ACTION REQUIRED" in val or "CRITICAL" in val:
             r1.font.bold = True
             r1.font.color.rgb = RGBColor(180, 0, 0)
 
@@ -127,9 +127,7 @@ def render_approval_note(
 
     summary_text = data.get(
         "summary",
-        "Autonomous document intelligence analysis was executed on the submitted inspection report. "
-        "The document was processed through the Sovereign OCR engine and compared against the indexed standard "
-        "operating procedures (SOPs), maintenance guidelines, and equipment compliance standards."
+        "Document intelligence analysis was executed on the submitted source document and verified against relevant standards."
     )
     p_sum = doc.add_paragraph(summary_text)
     p_sum.style.font.size = Pt(10)
@@ -141,11 +139,9 @@ def render_approval_note(
     r.font.bold = True
     r.font.color.rgb = RGBColor(16, 44, 87)
 
-    findings = data.get("critical_findings", [
-        "Corrosion fatigue detected on primary discharge flange bolts exceeding 1.5mm wall thinning threshold.",
-        "Pressure relief valve PRV-204 calibration interval exceeded maximum allowable 12-month limit.",
-        "Emergency shutdown bypass valve seal integrity compromised with visible weeping of seal fluid."
-    ])
+    findings = data.get("critical_findings") or [
+        "No critical findings identified in the analyzed document."
+    ]
     for f in findings:
         p_f = doc.add_paragraph(style="List Bullet")
         rf = p_f.add_run(f)
@@ -158,16 +154,10 @@ def render_approval_note(
     r.font.bold = True
     r.font.color.rgb = RGBColor(16, 44, 87)
 
-    citations = data.get("citations", [
-        "Safety SOP - Section 4.2 Emergency Shutdown Systems (p.12)",
-        "Maintenance Manual - Section 8.1 Flange Integrity & Bolt Torquing (p.34)",
-        "Equipment Standards - Section 11.4 Relief Valve Recertification (p.56)"
-    ])
-    gaps = data.get("compliance_gaps", [
-        ("Discharge Flange Wall Thinning", "Safety SOP - Section 4.2 Emergency Shutdown Systems (p.12)", "CRITICAL NON-COMPLIANCE"),
-        ("PRV-204 Recertification Overdue", "Equipment Standards - Section 11.4 Relief Valve Recertification (p.56)", "MAJOR GAP"),
-        ("Seal Integrity Weeping", "Maintenance Manual - Section 8.1 Flange Integrity & Bolt Torquing (p.34)", "MODERATE GAP"),
-    ])
+    citations = data.get("citations") or []
+    gaps = data.get("compliance_gaps") or [
+        ("General Inspection Scope", "Standard Operating Baseline", "REVIEW COMPLETED")
+    ]
 
     gap_table = doc.add_table(rows=1, cols=3)
     gap_table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -210,11 +200,9 @@ def render_approval_note(
     r.font.bold = True
     r.font.color.rgb = RGBColor(16, 44, 87)
 
-    recs = data.get("recommendations", [
-        "Initiate immediate scheduled depressurization and replacement of flange bolting assembly.",
-        "Perform off-line hydrostatic bench testing and recertification for PRV-204 within 48 hours.",
-        "Replace primary mechanical seal pack on pump P-102A prior to resuming continuous service."
-    ])
+    recs = data.get("recommendations") or [
+        "Maintain routine monitoring as per standard operational guidelines."
+    ]
     for idx, rec in enumerate(recs, 1):
         p_r = doc.add_paragraph()
         r_num = p_r.add_run(f"4.{idx} ")

@@ -31,5 +31,5 @@ models:
     context_length: 4096
     vram_gb: 6.0
     serving_backend: ollama
-    model_path: "ollama://llava:7b-q4_K_M"
+    model_path: "ollama://llava:7b-v1.5-q4_K_M"
     enabled: true

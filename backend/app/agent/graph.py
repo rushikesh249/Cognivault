@@ -18,11 +18,17 @@ from backend.app.agent.nodes import (
 
 def should_continue_or_finalize(state: AgentState) -> Literal["planning", "model_selection", "final_deliverable"]:
     """Conditional edge from Validation (TRD Table 30):
+    - If infrastructure/tool failure set status="failed" -> final_deliverable (no re-plan)
     - If passed & steps remain in plan -> model_selection (next plan step)
     - If passed & plan exhausted -> final_deliverable (succeeded)
     - If failed & iteration < max_iterations -> planning (re-plan loop)
     - If failed & iteration >= max_iterations -> final_deliverable (failed_bounded)
     """
+    # Infrastructure failures terminate immediately; self-correction must never
+    # be attempted on top of a sandbox/Docker execution error.
+    if state.get("status") == "failed":
+        return "final_deliverable"
+
     validation_passed = state.get("validation_passed", False)
     iteration = state.get("iteration", 1)
     max_iterations = state.get("max_iterations", 4)

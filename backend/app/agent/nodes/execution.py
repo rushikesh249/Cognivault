@@ -137,18 +137,99 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                     level="error",
                 )
         else:
-            raw_result = {
-                "type": "model",
-                "model_id": model_id,
-                "success": True,
-                "output": f"Step analysis completed using {model_id}.",
-            }
-            broadcaster.log_and_emit(
-                task_id=task_id,
-                node="execution",
-                message=f"Completed model inference step via '{model_id}'.",
-                level="info",
-            )
+            if task_type == "document":
+                # Grounded document analysis: the uploaded document's extracted
+                # text is the primary source; KB matches are supplementary only.
+                # Runs real local-model inference (no fabricated model output).
+                from backend.app.services.document_analysis import (
+                    DocumentAnalysisError,
+                    get_document_analysis_service,
+                )
+
+                extracted_text = ""
+                kb_matches = []
+                for obs in state.get("observations", []):
+                    struct = obs.get("structured_data", {})
+                    if not struct.get("success", True):
+                        continue
+                    if struct.get("tool_name") == "extract_text_from_scan":
+                        text = (struct.get("data") or {}).get("text", "")
+                        if text:
+                            extracted_text = text
+                    elif struct.get("tool_name") == "search_knowledge_base":
+                        kb_matches.extend((struct.get("data") or {}).get("matches", []) or [])
+
+                source_document = "uploaded document"
+                with get_db_context() as session:
+                    repo = FileRepository(session)
+                    task_files = repo.list_by_task_id(task_id)
+                    if task_files:
+                        source_document = task_files[0].filename
+
+                try:
+                    analysis = get_document_analysis_service().analyze(
+                        extracted_text=extracted_text,
+                        source_document=source_document,
+                        goal=state.get("goal") or "",
+                        kb_matches=kb_matches,
+                    )
+                    duration_ms = int((time.time() - start_time) * 1000)
+                    raw_result = {
+                        "type": "model",
+                        "model_id": analysis.get("analysis_model", model_id),
+                        "success": True,
+                        "analysis": analysis,
+                        "output": (
+                            f"Document analysis completed via {analysis.get('analysis_model')}. "
+                            f"Main topic: {analysis['section_values'].get('main_topic', 'n/a')[:160]}"
+                        ),
+                    }
+                    broadcaster.log_and_emit(
+                        task_id=task_id,
+                        node="execution",
+                        message=f"Completed grounded document analysis of '{source_document}' via '{analysis.get('analysis_model')}' in {duration_ms}ms.",
+                        level="info",
+                    )
+                except DocumentAnalysisError as dae:
+                    raw_result = {
+                        "type": "model",
+                        "model_id": model_id,
+                        "success": False,
+                        "error": str(dae),
+                    }
+                    broadcaster.log_and_emit(
+                        task_id=task_id,
+                        node="execution",
+                        message=f"Document analysis failed: {dae}",
+                        level="error",
+                    )
+                except Exception as e:
+                    logger.error(f"[{task_id}] Document analysis execution error: {e}", exc_info=True)
+                    raw_result = {
+                        "type": "model",
+                        "model_id": model_id,
+                        "success": False,
+                        "error": f"Document analysis error: {e}",
+                    }
+                    broadcaster.log_and_emit(
+                        task_id=task_id,
+                        node="execution",
+                        message=f"Document analysis failed: {e}",
+                        level="error",
+                    )
+            else:
+                raw_result = {
+                    "type": "model",
+                    "model_id": model_id,
+                    "success": True,
+                    "output": f"Step analysis completed using {model_id}.",
+                }
+                broadcaster.log_and_emit(
+                    task_id=task_id,
+                    node="execution",
+                    message=f"Completed model inference step via '{model_id}'.",
+                    level="info",
+                )
 
     return {
         "tool_calls": tool_calls,

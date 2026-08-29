@@ -78,13 +78,20 @@ export const GraphVisualizer: React.FC<GraphVisualizerProps> = ({
       <div className="graph-container">
         <div className="graph-nodes-grid">
           {STAGES.map((stg) => {
-            const isActive = activeNode === stg.key;
-            const isCompleted = completedNodes.includes(stg.key);
-            const isTerminal = stg.key === 'final_deliverable' && finalStatus !== null;
+            const isFinalDeliverable = stg.key === 'final_deliverable';
+            const isTerminal = isFinalDeliverable && finalStatus !== null;
+            const isActive = activeNode === stg.key && !isTerminal;
+            const isCompleted = completedNodes.includes(stg.key) || (isFinalDeliverable && finalStatus === 'succeeded');
 
             let stateClass = 'pending';
             if (isTerminal) {
-              stateClass = finalStatus === 'succeeded' ? 'completed' : 'error';
+              if (finalStatus === 'succeeded') {
+                stateClass = 'completed';
+              } else if (finalStatus === 'failed_bounded') {
+                stateClass = 'warning';
+              } else {
+                stateClass = 'error';
+              }
             } else if (isActive) {
               stateClass = 'active';
             } else if (isCompleted) {
@@ -95,8 +102,25 @@ export const GraphVisualizer: React.FC<GraphVisualizerProps> = ({
               <div key={stg.key} className={`graph-node ${stateClass}`}>
                 <div className="graph-node-header">
                   <span style={{ color: '#64748b' }}>STAGE {stg.stageNum}</span>
-                  {isCompleted && !isActive && <IconCheck size={14} color="#10b981" />}
-                  {isActive && <span style={{ color: '#38bdf8', fontSize: '0.7rem' }}>RUNNING</span>}
+                  {isTerminal ? (
+                    finalStatus === 'succeeded' ? (
+                      <span style={{ color: '#10b981', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <IconCheck size={13} color="#10b981" /> SUCCEEDED
+                      </span>
+                    ) : finalStatus === 'failed_bounded' ? (
+                      <span style={{ color: '#f59e0b', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <IconAlertTriangle size={13} color="#f59e0b" /> BOUNDED
+                      </span>
+                    ) : (
+                      <span style={{ color: '#ef4444', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <IconAlertTriangle size={13} color="#ef4444" /> FAILED
+                      </span>
+                    )
+                  ) : isActive ? (
+                    <span style={{ color: '#38bdf8', fontSize: '0.7rem' }}>RUNNING</span>
+                  ) : isCompleted ? (
+                    <IconCheck size={14} color="#10b981" />
+                  ) : null}
                 </div>
                 <div className="graph-node-title">{stg.title}</div>
                 <div className="graph-node-desc">{stg.description}</div>

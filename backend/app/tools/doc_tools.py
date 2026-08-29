@@ -47,6 +47,7 @@ class CreateDocxTool(BaseTool):
 
         payload = dict(input_data.data)
         payload.setdefault("task_id", task_id)
+        payload.setdefault("template", input_data.template)
 
         try:
             output_path, artifact_id = doc_gen.render(
@@ -54,8 +55,8 @@ class CreateDocxTool(BaseTool):
                 data=payload,
             )
 
-            sources = payload.get("citations", [])
-            title = payload.get("title", "Technical Approval Note: Equipment Inspection")
+            sources = payload.get("sources") or payload.get("citations", [])
+            title = payload.get("title", "Document Analysis Report")
 
             with get_db_context() as session:
                 repo = ArtifactRepository(session)

@@ -87,6 +87,14 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
         setFinalStatus(detail.status);
         setIsStreaming(false);
         isTerminalRef.current = true;
+        if (streamRef.current) {
+          streamRef.current.close();
+          streamRef.current = null;
+        }
+        if (reconnectTimeoutRef.current) {
+          window.clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
       }
     } catch (err: unknown) {
       console.warn('Failed to refresh task details:', err);
@@ -128,6 +136,14 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
       isTerminalRef.current = true;
       setIsStreaming(false);
       setIsComplete(true);
+      if (streamRef.current) {
+        streamRef.current.close();
+        streamRef.current = null;
+      }
+      if (reconnectTimeoutRef.current) {
+        window.clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
       if (event.message.includes("status='succeeded'")) {
         setFinalStatus('succeeded');
       } else if (event.message.includes("status='failed_bounded'")) {
@@ -160,24 +176,36 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
         onTerminal: () => {
           setIsStreaming(false);
           setIsComplete(true);
+          isTerminalRef.current = true;
+          if (streamRef.current) {
+            streamRef.current.close();
+            streamRef.current = null;
+          }
+          if (reconnectTimeoutRef.current) {
+            window.clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+          }
           void refreshTask();
         },
         onError: () => {
           if (isTerminalRef.current) return;
 
-          // Attempt bounded exponential backoff
+          // Attempt bounded exponential backoff only if not terminal
           if (attempts < 5) {
             attempts += 1;
             setReconnectCount(attempts);
             const delay = Math.min(1000 * Math.pow(2, attempts - 1), 8000);
             reconnectTimeoutRef.current = window.setTimeout(() => {
-              connectStream();
+              if (!isTerminalRef.current) {
+                connectStream();
+              }
             }, delay);
           } else {
             setIsStreaming(false);
-            setError('Connection lost to event stream. Switched to periodic status check.');
-            // Fallback: poll task endpoint
-            void refreshTask();
+            if (!isTerminalRef.current) {
+              setError('Connection lost to event stream. Switched to periodic status check.');
+              void refreshTask();
+            }
           }
         },
       });

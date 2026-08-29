@@ -40,6 +40,16 @@ class FileRepository:
     def get_by_id(self, file_id: str) -> Optional[FileORM]:
         return self._session.query(FileORM).filter(FileORM.file_id == file_id).first()
 
+    def attach_to_task(self, file_id: str, task_id: str) -> Optional[FileORM]:
+        """Link an already-uploaded file to a task (file -> task attachment)."""
+        file_obj = self.get_by_id(file_id)
+        if file_obj is None:
+            return None
+        file_obj.task_id = task_id
+        self._session.commit()
+        self._session.refresh(file_obj)
+        return file_obj
+
     def list_by_task_id(self, task_id: str) -> List[FileORM]:
         return (
             self._session.query(FileORM)

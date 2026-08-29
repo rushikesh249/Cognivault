@@ -13,18 +13,23 @@ def generate_default_plan(task_type: str, goal: str) -> List[str]:
     if task_type == "document":
         goal_lower = (goal or "").lower()
         if "xlsx" in goal_lower or "excel" in goal_lower or "spreadsheet" in goal_lower:
-            format_step = "Generate technical inspection summary XLSX artifact"
+            format_step = "Generate technical summary XLSX artifact"
         elif "pptx" in goal_lower or "presentation" in goal_lower or "deck" in goal_lower or "slides" in goal_lower:
             format_step = "Generate management summary deck PPTX artifact"
         elif "pdf" in goal_lower:
-            format_step = "Generate technical inspection report PDF artifact"
-        else:
+            format_step = "Generate technical report PDF artifact"
+        elif "approval note" in goal_lower or "compliance" in goal_lower:
             format_step = "Generate technical Approval Note DOCX artifact"
+        else:
+            format_step = "Generate structured analysis report DOCX artifact"
 
+        # Grounded document pipeline: the uploaded document is extracted first,
+        # the knowledge base is searched with document-derived queries only,
+        # and the local model analyzes the extracted text before rendering.
         return [
-            "Extract findings and anomalies from inspection report",
-            "Search safety standards and guidelines in knowledge base",
-            "Evaluate compliance gaps against safety clauses",
+            "Extract text from the uploaded document",
+            "Search knowledge base for supporting context",
+            "Analyze the extracted document content with the local model",
             format_step,
         ]
     elif task_type == "coding":

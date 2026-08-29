@@ -9,6 +9,7 @@ import openpyxl
 import pptx
 
 from backend.app.agent.event_broadcaster import get_event_broadcaster
+from backend.app.agent.nodes.tool_selection import is_approval_note_goal
 from backend.app.agent.state import AgentState
 from backend.app.persistence.artifact_repository import ArtifactRepository
 from backend.app.persistence.db import get_db_context
@@ -31,6 +32,30 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
     validation_passed = not has_errors
     artifact_id: Any = state.get("final_artifact_id")
     validation_notes: str = ""
+
+    # Infrastructure/tool execution failure short-circuit (TRD Section 20, ADR-008):
+    # a sandbox/Docker failure means pytest never executed, so it must never be
+    # re-planned as a test failure or converted into a successful outcome.
+    # Terminate explicitly with status="failed" instead of looping.
+    latest_struct = observations[-1].get("structured_data", {}) if observations else {}
+    if latest_struct.get("execution_status") == "error":
+        error_type = latest_struct.get("error_type", "tool_error")
+        error_message = latest_struct.get("error_message", "unknown tool execution error")
+        validation_notes = f"Infrastructure/tool execution failure ({error_type}): {error_message}"
+        broadcaster = get_event_broadcaster()
+        logger.error(f"[{task_id}] Validation aborted: {validation_notes}")
+        broadcaster.log_and_emit(
+            task_id=task_id,
+            node="validation",
+            message=f"Infrastructure failure ({error_type}): {error_message}. Terminating without self-correction.",
+            level="error",
+        )
+        return {
+            "validation_passed": False,
+            "status": "failed",
+            "validation_notes": validation_notes,
+            "final_artifact_id": artifact_id,
+        }
 
     # Task-specific validation logic
     if task_type == "coding":
@@ -94,11 +119,37 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
                                 if doc_kind == "docx" or file_path.suffix.lower() == ".docx":
                                     doc = docx.Document(str(file_path))
                                     full_doc_text = "\n".join(p.text for p in doc.paragraphs)
-                                    required_markers = ["Inspection", "Critical", "Compliance", "Recommendation"]
-                                    missing = [m for m in required_markers if m.lower() not in full_doc_text.lower()]
+                                    doc_text_lower = full_doc_text.lower()
+
+                                    if is_approval_note_goal(state.get("goal") or ""):
+                                        required_markers = ["Inspection", "Critical", "Compliance", "Recommendation"]
+                                        forbidden_markers: List[str] = []
+                                    else:
+                                        # Structured analysis report: the sections requested from
+                                        # the uploaded document plus source attribution.
+                                        required_markers = [
+                                            "Main Topic", "Objectives", "Methodology",
+                                            "Key Findings", "Conclusions", "Sources",
+                                        ]
+                                        # Anti-hallucination guard: canned industrial demo content
+                                        # must never appear in a report grounded in an unrelated
+                                        # uploaded document.
+                                        forbidden_markers = [
+                                            "Technical Approval Note", "PRV-204",
+                                            "Refining Unit 02", "P-102A", "MRPL-INSP",
+                                        ]
+
+                                    missing = [m for m in required_markers if m.lower() not in doc_text_lower]
+                                    present_forbidden = [m for m in forbidden_markers if m.lower() in doc_text_lower]
                                     if missing:
                                         validation_passed = False
                                         validation_notes = f"DOCX artifact missing required sections: {missing}"
+                                    elif present_forbidden:
+                                        validation_passed = False
+                                        validation_notes = (
+                                            f"DOCX artifact contains ungrounded demo content: {present_forbidden}. "
+                                            "Report content must be grounded in the uploaded source document."
+                                        )
                                     else:
                                         validation_notes = "Plan execution and deliverable artifacts validated successfully."
 

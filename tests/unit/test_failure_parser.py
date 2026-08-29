@@ -68,3 +68,62 @@ def test_parse_non_standard_failure_fallback():
     result = parse_pytest_failures(stdout="", stderr=sample_stderr)
     assert len(result["failing_tests"]) == 1
     assert "SyntaxError" in result["error_summary"]
+
+
+def test_parse_exit_code_5_no_tests_collected():
+    """exit_code=5 must be classified as a collection/no-tests problem, not an unknown failing test."""
+    sample_stdout = (
+        "============================= test session starts =============================\n"
+        "collected 0 items\n"
+        "============================ no tests ran in 0.01s =============================\n"
+    )
+    result = parse_pytest_failures(stdout=sample_stdout, stderr="", exit_code=5)
+    assert result["failure_kind"] == "no_tests_collected"
+    assert result["exit_code"] == 5
+    assert "no_tests_collected" in result["failing_tests"]
+    assert "unknown_test" not in result["failing_tests"]
+
+
+def test_parse_exit_code_1_genuine_test_failure():
+    """exit_code=1 with collected tests must be classified as a genuine test failure."""
+    sample_stdout = (
+        "collected 3 items\n"
+        "test_factorial.py .F.\n"
+        "E       assert 0 == 1\n"
+        "FAILED test_factorial.py::test_factorial_zero - assert 0 == 1\n"
+        "========================= 1 failed, 2 passed in 0.02s =========================\n"
+    )
+    result = parse_pytest_failures(stdout=sample_stdout, stderr="", exit_code=1)
+    assert result["failure_kind"] == "test_failure"
+    assert result["exit_code"] == 1
+    assert "test_factorial.py::test_factorial_zero" in result["failing_tests"]
+    assert "assert 0 == 1" in result["error_summary"]
+
+
+def test_parse_exit_code_4_usage_error():
+    """exit_code=4 must be classified as a pytest command-line usage error."""
+    sample_stderr = "ERROR: unrecognized arguments: --bogus-flag"
+    result = parse_pytest_failures(stdout="", stderr=sample_stderr, exit_code=4)
+    assert result["failure_kind"] == "usage_error"
+    assert result["exit_code"] == 4
+
+
+def test_parse_exit_code_2_collection_error():
+    """exit_code=2 with collection-time errors must be classified as collection_error."""
+    sample_stdout = (
+        "collected 0 items / 1 error\n"
+        "=================================== ERRORS ====================================\n"
+        "E   ModuleNotFoundError: No module named 'factorial'\n"
+    )
+    result = parse_pytest_failures(stdout=sample_stdout, stderr="", exit_code=2)
+    assert result["failure_kind"] == "collection_error"
+    assert result["exit_code"] == 2
+    assert any("ModuleNotFoundError" in ce for ce in result["collection_errors"])
+
+
+def test_parse_exit_code_0_passed():
+    """exit_code=0 must be classified as passed."""
+    sample_stdout = "collected 3 items\ntest_factorial.py ...\n========================= 3 passed in 0.01s ==========================\n"
+    result = parse_pytest_failures(stdout=sample_stdout, stderr="", exit_code=0)
+    assert result["failure_kind"] == "passed"
+    assert result["exit_code"] == 0

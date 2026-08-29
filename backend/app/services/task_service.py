@@ -4,6 +4,7 @@ import logging
 from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
+from backend.app.persistence.file_repository import FileRepository
 from backend.app.persistence.task_repository import TaskRepository
 
 logger = logging.getLogger("sovereign_workbench.services.tasks")
@@ -34,6 +35,7 @@ class TaskService:
     """
 
     def __init__(self, session: Session):
+        self._session = session
         self._repo = TaskRepository(session)
 
     def create_task(
@@ -58,6 +60,19 @@ class TaskService:
             task_type=task_type,
             prompt=prompt.strip(),
         )
+
+        # Link attached uploaded files to the new task so the agent pipeline
+        # can resolve them as the primary source document (TRD Table 23).
+        linked_file_ids: List[str] = []
+        if file_ids:
+            file_repo = FileRepository(self._session)
+            for fid in file_ids:
+                attached = file_repo.attach_to_task(fid, task.task_id)
+                if attached is not None:
+                    linked_file_ids.append(fid)
+                else:
+                    logger.warning(f"File '{fid}' referenced in task creation was not found; skipped.")
+
         logger.info(f"Created task {task.task_id} (type={task.task_type}, title='{task.title}')")
         return {
             "task_id": task.task_id,
@@ -67,7 +82,7 @@ class TaskService:
             "status": task.status,
             "created_at": task.created_at,
             "updated_at": task.updated_at,
-            "file_ids": file_ids or [],
+            "file_ids": linked_file_ids if file_ids else [],
         }
 
     def get_task(self, task_id: str) -> Dict[str, Any]:

@@ -3,6 +3,8 @@
 import asyncio
 import logging
 from typing import Optional
+from pathlib import Path
+import shutil
 from sqlalchemy.orm import Session
 
 from backend.app.agent.graph import agent_graph
@@ -67,7 +69,57 @@ class AgentService:
             prompt = task.prompt
 
         # Determine configured max_iterations
-        max_iter = settings.agent.max_iterations.get(task_type, 4)
+        max_iter = settings.agent.max_iterations.get(task_type, 6 if task_type == "coding" else (3 if task_type == "vision" else 4))
+
+        # Ensure sandbox task workspace directory exists
+        workspace_dir = Path(settings.paths.data_dir) / "sandbox" / task_id
+        workspace_dir.mkdir(parents=True, exist_ok=True)
+
+        if task_type == "coding":
+            prompt_lower = (prompt or "").lower()
+            if "factorial" in prompt_lower:
+                # Seed factorial demo workspace if not already present
+                test_files = list(workspace_dir.glob("test_*.py"))
+                if not test_files:
+                    initial_factorial_code = (
+                        '"""Recursive Factorial Module (Hero Flow Seed).\n\n'
+                        'Contains intentional edge-case defect for cyclic self-correction demonstration.\n'
+                        '"""\n\n'
+                        'def factorial(n: int) -> int:\n'
+                        '    """Calculate factorial of n recursively."""\n'
+                        '    if n < 0:\n'
+                        '        raise ValueError("Factorial not defined for negative numbers")\n'
+                        '    if n == 0:\n'
+                        '        return 0  # Injected defect: 0! should be 1, but returns 0\n'
+                        '    return n * factorial(n - 1)\n'
+                    )
+                    factorial_test_code = (
+                        '"""Unit tests for recursive factorial implementation."""\n\n'
+                        'import pytest\n'
+                        'from factorial import factorial\n\n\n'
+                        'def test_factorial_positive():\n'
+                        '    """Verify positive integers factorial."""\n'
+                        '    assert factorial(1) == 1\n'
+                        '    assert factorial(3) == 6\n'
+                        '    assert factorial(5) == 120\n\n\n'
+                        'def test_factorial_zero():\n'
+                        '    """Verify factorial of 0 is 1."""\n'
+                        '    assert factorial(0) == 1\n\n\n'
+                        'def test_factorial_negative():\n'
+                        '    """Verify negative input raises ValueError."""\n'
+                        '    with pytest.raises(ValueError):\n'
+                        '        factorial(-1)\n'
+                    )
+                    if not (workspace_dir / "factorial.py").exists():
+                        (workspace_dir / "factorial.py").write_text(initial_factorial_code, encoding="utf-8")
+                    (workspace_dir / "test_factorial.py").write_text(factorial_test_code, encoding="utf-8")
+            elif "telemetry" in prompt_lower or "data processor" in prompt_lower or "moving average" in prompt_lower:
+                seed_src = Path("sandbox/demo_seed/data_processor.py")
+                seed_test = Path("sandbox/demo_seed/test_data_processor.py")
+                if seed_src.exists() and not (workspace_dir / "data_processor.py").exists():
+                    shutil.copy2(seed_src, workspace_dir / "data_processor.py")
+                if seed_test.exists() and not (workspace_dir / "test_data_processor.py").exists():
+                    shutil.copy2(seed_test, workspace_dir / "test_data_processor.py")
 
         initial_state: AgentState = {
             "task_id": task_id,
