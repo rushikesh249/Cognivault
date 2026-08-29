@@ -316,32 +316,20 @@ pytest tests/integration -v
 pytest tests/unit/test_no_cloud.py tests/integration/test_sovereignty_monitor.py -v
 ```
 
----
 
-## 📸 Screenshots & UI Showcase
 
-> *Instructions: Capture screenshots from the running workbench UI and save them under `docs/screenshots/` with the filenames indicated below.*
-
-| Screen | Description |
-| :--- | :--- |
-| ![Agent Workbench](docs/screenshots/01_agent_workbench.png) | **Interactive Agent Workbench**: Real-time 8-stage LangGraph visualizer, live SSE thought log, and task configuration panel. |
-| ![Hero Flows Launcher](docs/screenshots/02_hero_flows.png) | **Enterprise Hero Flow Hub**: One-click operational scenario launchers for Document Intelligence, Sandbox Self-Correction, and Vision. |
-| ![Sovereignty Dashboard](docs/screenshots/03_sovereignty_dashboard.png) | **Sovereignty & Air-Gap Monitor**: Live socket telemetry, zero-egress packet meter, and local subsystem health grid. |
-| ![Artifact Explorer](docs/screenshots/04_artifact_explorer.png) | **Deliverables Catalog**: Generated DOCX, PDF, XLSX, and PPTX artifact preview and direct download manager. |
-
----
 
 ## 👥 Smart India Hackathon (SIH) Team
 
-- **Team Name**: *CogniVault Team*
-- **Problem Statement ID**: *SIH-2024 / Sovereign AI & Air-Gapped Intelligence*
-- **Team Lead**: *Pranav*
+- **Team Name**: *Code4Bharat Team*
+- **Problem Statement ID**: *SIH-2026 / Sovereign AI & Air-Gapped Intelligence*
+- **Team Lead**: *Pranav Dawange*
 - **Team Members**:
-  - Member 1: *[Name / Role]*
-  - Member 2: *[Name / Role]*
-  - Member 3: *[Name / Role]*
-  - Member 4: *[Name / Role]*
-  - Member 5: *[Name / Role]*
+  - Member 1: *Harshit Jain*
+  - Member 2: *Rushikesh Ambhore*
+  - Member 3: *Atharva Agey*
+  - Member 4: *Akash Sharma*
+  - Member 5: *Tanaya Arvikar*
 
 ---
 
