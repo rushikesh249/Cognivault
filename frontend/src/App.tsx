@@ -85,7 +85,12 @@ export const App: React.FC = () => {
 
         {/* Tab 2: Hero Flows Quickstart */}
         {activeTab === 'heroes' && (
-          <HeroFlowLauncher onLaunchHeroFlow={handleTaskCreated} />
+          <HeroFlowLauncher
+            onOpenInWorkbench={(taskId) => {
+              setSelectedTaskId(taskId);
+              setActiveTab('workspace');
+            }}
+          />
         )}
 
         {/* Tab 3: Multimodal Vision Inspector */}

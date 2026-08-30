@@ -222,6 +222,11 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                             attached_file_id = f.stem
                             source_filename = f.name
                             break
+                    if not attached_file_id:
+                        demo_img = Path("knowledge_base/demo_inputs/synthetic_weld_flange.jpg")
+                        if demo_img.exists():
+                            attached_file_id = demo_img.name
+                            source_filename = demo_img.name
 
                 try:
                     from backend.app.services.vision_service import get_vision_app_service
