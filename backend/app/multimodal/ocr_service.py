@@ -242,15 +242,76 @@ class OCRService:
             full_text=text,
         )
 
+    def extract_from_docx(self, file_path: Path) -> OCRDocumentResult:
+        """
+        Extract structured native text and tables from Word DOCX document.
+        Extracts paragraphs, headings, bullet lists, and table rows with clean markdown format.
+        """
+        try:
+            import docx
+        except ImportError as e:
+            raise RuntimeError("python-docx package is required for DOCX text extraction.") from e
+
+        try:
+            doc_obj = docx.Document(file_path)
+        except Exception as e:
+            logger.error(f"Failed to parse DOCX file '{file_path}': {e}", exc_info=True)
+            raise ValueError(f"Corrupt or invalid DOCX document: {e}") from e
+
+        text_blocks: List[str] = []
+
+        # 1. Extract Paragraphs
+        for para in doc_obj.paragraphs:
+            text = para.text.strip()
+            if text:
+                text_blocks.append(text)
+
+        # 2. Extract Table Content (Tables -> Markdown-like format)
+        for table_idx, table in enumerate(doc_obj.tables, start=1):
+            table_lines: List[str] = []
+            for row in table.rows:
+                row_cells = [cell.text.strip() for cell in row.cells]
+                # Avoid duplicate identical adjacent merged cells if any
+                row_str = " | ".join(row_cells)
+                if row_str.strip():
+                    table_lines.append(f"| {row_str} |")
+
+            if table_lines:
+                text_blocks.append(f"\n--- [Table {table_idx}] ---\n" + "\n".join(table_lines) + "\n")
+
+        full_text = "\n\n".join(text_blocks)
+        if not full_text.strip():
+            full_text = f"[Empty DOCX Document: {file_path.name}]"
+
+        page_res = OCRPageResult(
+            page_number=1,
+            source="native_text",
+            ocr_confidence=1.0,
+            low_confidence=False,
+            extracted_text=full_text,
+            preprocessing_status="native_text",
+        )
+
+        return OCRDocumentResult(
+            total_pages=1,
+            native_pages=1,
+            scanned_pages=0,
+            has_low_confidence_pages=False,
+            pages=[page_res],
+            full_text=full_text,
+        )
+
     def extract(self, file_path: Path) -> OCRDocumentResult:
-        """General dispatch for PDF and image OCR extraction."""
+        """General dispatch for PDF, DOCX, and image text extraction."""
         suffix = file_path.suffix.lower()
         if suffix == ".pdf":
             return self.extract_from_pdf(file_path)
+        elif suffix == ".docx":
+            return self.extract_from_docx(file_path)
         elif suffix in [".jpg", ".jpeg", ".png"]:
             return self.extract_from_image(file_path)
         else:
-            raise ValueError(f"Unsupported file type for OCR: {suffix}")
+            raise ValueError(f"Unsupported file type for document extraction: {suffix}")
 
 
 _ocr_service_instance: Optional[OCRService] = None

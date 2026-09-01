@@ -67,9 +67,10 @@ ocr:
   dpi: 300
   confidence_threshold: 0.6
 upload:
-  max_upload_bytes: 10485760
+  max_upload_bytes: 52428800
   allowed_mime_types:
   - application/pdf
+  - application/vnd.openxmlformats-officedocument.wordprocessingml.document
   - image/jpeg
   - image/png
 

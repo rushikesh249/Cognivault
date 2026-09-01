@@ -1,7 +1,12 @@
 import React from 'react';
 import { Badge } from '../common/Badge';
-import { Card } from '../common/Card';
-import { IconAlertTriangle, IconCheck, IconCpu, IconLayers, IconRefresh } from '../common/Icons';
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconCpu,
+  IconLayers,
+  IconRefresh,
+} from '../common/Icons';
 import type { LangGraphNode, TaskStatus } from '../../types';
 
 interface GraphVisualizerProps {
@@ -42,113 +47,101 @@ export const GraphVisualizer: React.FC<GraphVisualizerProps> = ({
   const isRetrying = iteration > 1 && (activeNode === 'planning' || activeNode === 'validation');
 
   return (
-    <Card
-      title="LangGraph 8-Stage Execution Pipeline"
-      icon={<IconLayers size={18} color="#38bdf8" />}
-      badge={
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+    <div className="cv-card cv-graph-card">
+      <div className="cv-card-header-row">
+        <div className="cv-card-title-group">
+          <IconLayers size={18} color="#4338ca" />
+          <h3 className="cv-card-heading">LangGraph 8-Stage Execution Pipeline</h3>
+        </div>
+
+        <div className="cv-header-badges-row" style={{ display: 'flex', gap: '0.5rem' }}>
           {iteration > 1 && (
-            <Badge variant="warning" icon={<IconRefresh size={12} />}>
+            <Badge variant="warning" icon={<IconRefresh size={13} />}>
               Iteration {iteration}/{maxIterations} (Self-Correcting)
             </Badge>
           )}
           {finalStatus === 'succeeded' && (
-            <Badge variant="success" icon={<IconCheck size={12} />}>
+            <Badge variant="success" icon={<IconCheck size={13} />}>
               Execution Succeeded
             </Badge>
           )}
           {finalStatus === 'failed_bounded' && (
-            <Badge variant="warning" icon={<IconAlertTriangle size={12} />}>
+            <Badge variant="warning" icon={<IconAlertTriangle size={13} />}>
               Failed Bounded ({maxIterations} Iterations)
             </Badge>
           )}
           {finalStatus === 'failed' && (
-            <Badge variant="error" icon={<IconAlertTriangle size={12} />}>
+            <Badge variant="error" icon={<IconAlertTriangle size={13} />}>
               Execution Failed
             </Badge>
           )}
           {isStreaming && !finalStatus && (
-            <Badge variant="info" icon={<IconCpu size={12} />}>
+            <Badge variant="info" icon={<IconCpu size={13} />}>
               Agent Active
             </Badge>
           )}
         </div>
-      }
-    >
-      <div className="graph-container">
-        <div className="graph-nodes-grid">
-          {STAGES.map((stg) => {
-            const isFinalDeliverable = stg.key === 'final_deliverable';
-            const isTerminal = isFinalDeliverable && finalStatus !== null;
-            const isActive = activeNode === stg.key && !isTerminal;
-            const isCompleted = completedNodes.includes(stg.key) || (isFinalDeliverable && finalStatus === 'succeeded');
-
-            let stateClass = 'pending';
-            if (isTerminal) {
-              if (finalStatus === 'succeeded') {
-                stateClass = 'completed';
-              } else if (finalStatus === 'failed_bounded') {
-                stateClass = 'warning';
-              } else {
-                stateClass = 'error';
-              }
-            } else if (isActive) {
-              stateClass = 'active';
-            } else if (isCompleted) {
-              stateClass = 'completed';
-            }
-
-            return (
-              <div key={stg.key} className={`graph-node ${stateClass}`}>
-                <div className="graph-node-header">
-                  <span style={{ color: '#64748b' }}>STAGE {stg.stageNum}</span>
-                  {isTerminal ? (
-                    finalStatus === 'succeeded' ? (
-                      <span style={{ color: '#10b981', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <IconCheck size={13} color="#10b981" /> SUCCEEDED
-                      </span>
-                    ) : finalStatus === 'failed_bounded' ? (
-                      <span style={{ color: '#f59e0b', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <IconAlertTriangle size={13} color="#f59e0b" /> BOUNDED
-                      </span>
-                    ) : (
-                      <span style={{ color: '#ef4444', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <IconAlertTriangle size={13} color="#ef4444" /> FAILED
-                      </span>
-                    )
-                  ) : isActive ? (
-                    <span style={{ color: '#38bdf8', fontSize: '0.7rem' }}>RUNNING</span>
-                  ) : isCompleted ? (
-                    <IconCheck size={14} color="#10b981" />
-                  ) : null}
-                </div>
-                <div className="graph-node-title">{stg.title}</div>
-                <div className="graph-node-desc">{stg.description}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        {isRetrying && (
-          <div style={{
-            marginTop: '0.5rem',
-            padding: '0.6rem 0.85rem',
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: '6px',
-            fontSize: '0.775rem',
-            color: '#f59e0b',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
-            <IconRefresh size={14} />
-            <span>
-              <strong>Cyclic Validation Loop:</strong> Validation criteria unmet on step. Re-planning with failure context (Iteration {iteration} of {maxIterations} max allowed).
-            </span>
-          </div>
-        )}
       </div>
-    </Card>
+
+      <div className="cv-graph-grid">
+        {STAGES.map((stg) => {
+          const isFinalDeliverable = stg.key === 'final_deliverable';
+          const isTerminal = isFinalDeliverable && finalStatus !== null;
+          const isActive = activeNode === stg.key && !isTerminal;
+          const isCompleted =
+            completedNodes.includes(stg.key) ||
+            (isFinalDeliverable && finalStatus === 'succeeded');
+
+          let stateClass = 'pending';
+          if (isTerminal) {
+            if (finalStatus === 'succeeded') stateClass = 'completed';
+            else if (finalStatus === 'failed_bounded') stateClass = 'warning';
+            else stateClass = 'error';
+          } else if (isActive) {
+            stateClass = 'active';
+          } else if (isCompleted) {
+            stateClass = 'completed';
+          }
+
+          return (
+            <div key={stg.key} className={`cv-graph-node-box ${stateClass}`}>
+              <div className="cv-graph-node-top">
+                <span className="cv-stage-num-tag">STAGE {stg.stageNum}</span>
+                {isTerminal ? (
+                  finalStatus === 'succeeded' ? (
+                    <span className="cv-node-status-badge cv-text-green">
+                      <IconCheck size={14} color="#15803d" /> SUCCEEDED
+                    </span>
+                  ) : finalStatus === 'failed_bounded' ? (
+                    <span className="cv-node-status-badge cv-text-amber">
+                      <IconAlertTriangle size={14} color="#b45309" /> BOUNDED
+                    </span>
+                  ) : (
+                    <span className="cv-node-status-badge cv-text-red">
+                      <IconAlertTriangle size={14} color="#b91c1c" /> FAILED
+                    </span>
+                  )
+                ) : isActive ? (
+                  <span className="cv-node-status-badge cv-text-purple">RUNNING</span>
+                ) : isCompleted ? (
+                  <IconCheck size={15} color="#15803d" />
+                ) : null}
+              </div>
+              <div className="cv-graph-node-title">{stg.title}</div>
+              <div className="cv-graph-node-desc">{stg.description}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {isRetrying && (
+        <div className="cv-graph-retry-banner">
+          <IconRefresh size={15} />
+          <span>
+            <strong>Cyclic Validation Loop:</strong> Validation criteria unmet on step. Re-planning with failure context (Iteration {iteration} of {maxIterations} max allowed).
+          </span>
+        </div>
+      )}
+    </div>
   );
 };

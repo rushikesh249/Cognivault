@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Card } from '../common/Card';
 import { IconTerminal } from '../common/Icons';
 import type { TaskEvent } from '../../types';
 
@@ -26,56 +25,61 @@ export const LiveEventFeed: React.FC<LiveEventFeedProps> = ({ events, isStreamin
   });
 
   return (
-    <Card
-      title="Real-Time Event Stream (SSE Replay & Live)"
-      icon={<IconTerminal size={18} color="#38bdf8" />}
-      badge={
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+    <div className="cv-card cv-activity-feed-card">
+      <div className="cv-card-header-row">
+        <div className="cv-card-title-group">
+          <IconTerminal size={18} color="#4338ca" />
+          <h3 className="cv-card-heading">Real-Time Operational Activity Stream</h3>
+        </div>
+
+        <div className="cv-feed-controls">
           {reconnectCount > 0 && isStreaming && (
-            <span style={{ fontSize: '0.75rem', color: '#f59e0b' }}>
-              Reconnecting (attempt {reconnectCount}/5)...
+            <span className="cv-reconnect-badge">
+              Reconnecting ({reconnectCount}/5)...
             </span>
           )}
+
           <select
-            className="form-select"
-            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+            className="cv-select-compact"
             value={filterLevel}
             onChange={(e) => setFilterLevel(e.target.value)}
           >
-            <option value="all">All Levels ({events.length})</option>
+            <option value="all">All Events ({events.length})</option>
             <option value="info">Info only</option>
             <option value="warn">Warnings only</option>
             <option value="error">Errors only</option>
           </select>
+
           <button
             type="button"
-            className={`btn btn-secondary`}
-            style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+            className="cv-btn-compact-secondary"
             onClick={() => setAutoScroll(!autoScroll)}
           >
             {autoScroll ? 'Lock Scroll' : 'Auto Scroll'}
           </button>
         </div>
-      }
-    >
-      <div className="event-terminal" ref={terminalRef}>
+      </div>
+
+      <div className="cv-terminal-window" ref={terminalRef}>
         {filteredEvents.length === 0 ? (
-          <div style={{ color: '#64748b', textAlign: 'center', padding: '2rem 0' }}>
-            {isStreaming ? 'Connecting to SSE stream / awaiting agent events...' : 'No events logged for this task.'}
+          <div className="cv-terminal-empty">
+            {isStreaming
+              ? 'Connecting to Sovereign SSE stream / awaiting operational agent events...'
+              : 'No activity events recorded for this task session.'}
           </div>
         ) : (
           filteredEvents.map((ev) => {
             const timeStr = new Date(ev.ts).toLocaleTimeString();
             return (
-              <div key={ev.event_id} className="event-row">
-                <span className="event-ts">[{timeStr}]</span>
-                <span className="event-node">[{ev.node}]</span>
-                <span className={`event-msg ${ev.level}`}>{ev.message}</span>
+              <div key={ev.event_id} className="cv-terminal-row">
+                <span className="cv-term-ts">[{timeStr}]</span>
+                <span className="cv-term-node">[{ev.node}]</span>
+                <span className={`cv-term-msg ${ev.level}`}>{ev.message}</span>
               </div>
             );
           })
         )}
       </div>
-    </Card>
+    </div>
   );
 };

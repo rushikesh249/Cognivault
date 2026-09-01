@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Card } from '../common/Card';
-import { IconCode, IconCpu, IconEye, IconFileText, IconPlay, IconUpload } from '../common/Icons';
+import { IconPlay, IconUpload } from '../common/Icons';
 import { api } from '../../services/api';
 import type { TaskCreatePayload, TaskType } from '../../types';
 
@@ -10,8 +9,8 @@ interface TaskCreatorProps {
 }
 
 export const TaskCreator: React.FC<TaskCreatorProps> = ({ onTaskCreated, disabled = false }) => {
+  const [taskCategory, setTaskCategory] = useState<TaskType>('document');
   const [title, setTitle] = useState<string>('');
-  const [taskType, setTaskType] = useState<TaskType>('document');
   const [prompt, setPrompt] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -20,7 +19,7 @@ export const TaskCreator: React.FC<TaskCreatorProps> = ({ onTaskCreated, disable
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim()) {
-      setError('Task prompt / instructions cannot be empty.');
+      setError('Instructions for the agent cannot be empty.');
       return;
     }
 
@@ -32,8 +31,8 @@ export const TaskCreator: React.FC<TaskCreatorProps> = ({ onTaskCreated, disable
 
       // 1. If file attached, upload first
       if (selectedFile) {
-        if (selectedFile.size > 10 * 1024 * 1024) {
-          throw new Error('Attached file exceeds 10 MB limit.');
+        if (selectedFile.size > 50 * 1024 * 1024) {
+          throw new Error('Attached file exceeds 50 MB limit.');
         }
         const uploadRes = await api.uploadFile(selectedFile);
         fileIds = [uploadRes.file_id];
@@ -41,8 +40,8 @@ export const TaskCreator: React.FC<TaskCreatorProps> = ({ onTaskCreated, disable
 
       // 2. Create task
       const payload: TaskCreatePayload = {
-        title: title.trim() || `${taskType.toUpperCase()} Task - ${new Date().toLocaleTimeString()}`,
-        task_type: taskType,
+        title: title.trim() || `${taskCategory.toUpperCase()} Task - ${new Date().toLocaleTimeString()}`,
+        task_type: taskCategory,
         prompt: prompt.trim(),
         file_ids: fileIds,
       };
@@ -61,94 +60,99 @@ export const TaskCreator: React.FC<TaskCreatorProps> = ({ onTaskCreated, disable
     }
   };
 
-  const handlePreset = (type: TaskType, presetTitle: string, presetPrompt: string) => {
-    setTaskType(type);
-    setTitle(presetTitle);
-    setPrompt(presetPrompt);
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (disabled || loading) return;
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      setSelectedFile(file);
+      const fn = file.name.toLowerCase();
+      if (fn.endsWith('.jpg') || fn.endsWith('.jpeg') || fn.endsWith('.png')) {
+        setTaskCategory('vision');
+      }
+    }
   };
 
   return (
-    <Card title="Configure & Launch Sovereign Agent" icon={<IconCpu size={18} color="#38bdf8" />}>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label className="form-label">Task Category</label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+    <div className="cv-card cv-task-configure-card">
+      <form onSubmit={handleSubmit} className="cv-task-form">
+        {/* 1. Task Category Segmented Control */}
+        <div className="cv-form-field">
+          <label className="cv-field-label">Task Category</label>
+          <div className="cv-segmented-control">
             <button
               type="button"
-              className={`btn ${taskType === 'document' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setTaskType('document')}
+              className={`cv-segment-btn ${taskCategory === 'document' ? 'active' : ''}`}
+              onClick={() => setTaskCategory('document')}
             >
-              <IconFileText size={15} />
-              Document RAG
+              Document
             </button>
             <button
               type="button"
-              className={`btn ${taskType === 'coding' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setTaskType('coding')}
+              className={`cv-segment-btn ${taskCategory === 'coding' ? 'active' : ''}`}
+              onClick={() => setTaskCategory('coding')}
             >
-              <IconCode size={15} />
-              Coding & Docker
+              Code
             </button>
             <button
               type="button"
-              className={`btn ${taskType === 'vision' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setTaskType('vision')}
+              className={`cv-segment-btn ${taskCategory === 'vision' ? 'active' : ''}`}
+              onClick={() => setTaskCategory('vision')}
             >
-              <IconEye size={15} />
-              Multimodal Vision
+              Vision
             </button>
           </div>
         </div>
 
-        <div className="form-group">
-          <label className="form-label">Task Title (Optional)</label>
+        {/* 2. Task Title Input */}
+        <div className="cv-form-field">
+          <label className="cv-field-label">Task Title</label>
           <input
             type="text"
-            className="form-input"
-            placeholder="e.g., Turbine Rotor Blade Inspection Analysis"
+            className="cv-input-text"
+            placeholder="e.g., Analyze Q3 Financial Reports"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             disabled={disabled || loading}
           />
         </div>
 
-        <div className="form-group">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <label className="form-label">Instructions & Goal</label>
-            <div style={{ display: 'flex', gap: '0.35rem' }}>
+        {/* 3. Instructions Textarea */}
+        <div className="cv-form-field">
+          <div className="cv-field-label-row">
+            <label className="cv-field-label">Instructions</label>
+            <div className="cv-preset-links">
               <button
                 type="button"
-                className="btn btn-secondary"
-                style={{ padding: '0.15rem 0.4rem', fontSize: '0.7rem' }}
-                onClick={() =>
-                  handlePreset(
-                    'document',
-                    'Turbine Blade Inspection Report',
-                    'Extract findings from inspection report, evaluate compliance gaps against ISO standards in knowledge base, and generate technical Approval Note DOCX artifact.'
-                  )
-                }
+                className="cv-mini-preset-btn"
+                onClick={() => {
+                  setTaskCategory('document');
+                  setTitle('Analyze Turbine Rotor Inspection Report');
+                  setPrompt('Extract findings and anomalies from inspection report, search safety standards in knowledge base, evaluate compliance gaps, and generate technical structured analysis report DOCX artifact.');
+                }}
               >
-                Doc Preset
+                Sample Doc
               </button>
               <button
                 type="button"
-                className="btn btn-secondary"
-                style={{ padding: '0.15rem 0.4rem', fontSize: '0.7rem' }}
-                onClick={() =>
-                  handlePreset(
-                    'coding',
-                    'Factorial Algorithm Implementation',
-                    'Write a python factorial function with unit tests in Docker sandbox. If tests fail, inspect stderr and self-correct.'
-                  )
-                }
+                className="cv-mini-preset-btn"
+                onClick={() => {
+                  setTaskCategory('coding');
+                  setTitle('Factorial Algorithm with Self-Correction');
+                  setPrompt('Write a python factorial function with unit tests in Docker sandbox. If tests fail, inspect stderr and self-correct.');
+                }}
               >
-                Code Preset
+                Sample Code
               </button>
             </div>
           </div>
           <textarea
-            className="form-textarea"
-            placeholder="Describe the objective, target artifact formats (DOCX, XLSX, PPTX, PDF), and specific requirements..."
+            className="cv-textarea"
+            placeholder="Provide detailed instructions for the agent..."
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             disabled={disabled || loading}
@@ -156,66 +160,72 @@ export const TaskCreator: React.FC<TaskCreatorProps> = ({ onTaskCreated, disable
           />
         </div>
 
-        <div className="form-group">
-          <label className="form-label">Attach File / Image (Optional, max 10MB)</label>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        {/* 4. Attachment Drag-and-Drop Dropzone */}
+        <div className="cv-form-field">
+          <label className="cv-field-label">Attachment</label>
+          <div
+            className={`cv-dropzone ${selectedFile ? 'has-file' : ''}`}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onClick={() => document.getElementById('task-file-input')?.click()}
+          >
             <input
               type="file"
-              id="file-upload"
+              id="task-file-input"
               style={{ display: 'none' }}
-              accept=".pdf,.png,.jpg,.jpeg"
+              accept=".pdf,.docx,.txt,.png,.jpg,.jpeg"
               onChange={(e) => {
                 if (e.target.files && e.target.files[0]) {
                   const file = e.target.files[0];
                   setSelectedFile(file);
                   const fn = file.name.toLowerCase();
                   if (fn.endsWith('.jpg') || fn.endsWith('.jpeg') || fn.endsWith('.png')) {
-                    setTaskType('vision');
+                    setTaskCategory('vision');
                   }
                 }
               }}
               disabled={disabled || loading}
             />
-            <label
-              htmlFor="file-upload"
-              className="btn btn-secondary"
-              style={{ cursor: disabled || loading ? 'not-allowed' : 'pointer' }}
-            >
-              <IconUpload size={14} />
-              {selectedFile ? 'Change File' : 'Browse File'}
-            </label>
-            {selectedFile && (
-              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-              </span>
-            )}
+
+            <div className="cv-dropzone-content">
+              <div className="cv-dropzone-icon-circle">
+                <IconUpload size={20} color="#4b5563" />
+              </div>
+              <div className="cv-dropzone-main-text">
+                {selectedFile ? (
+                  <span style={{ color: '#111827', fontWeight: 600 }}>{selectedFile.name}</span>
+                ) : (
+                  'Click or drag files to upload'
+                )}
+              </div>
+              <div className="cv-dropzone-sub-text">
+                {selectedFile
+                  ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB attached`
+                  : 'PDF, DOCX, TXT up to 50MB'}
+              </div>
+            </div>
           </div>
         </div>
 
         {error && (
-          <div style={{
-            padding: '0.6rem 0.85rem',
-            backgroundColor: 'var(--status-error-bg)',
-            border: '1px solid var(--status-error-border)',
-            borderRadius: '6px',
-            color: 'var(--status-error)',
-            fontSize: '0.8rem',
-            marginBottom: '1rem'
-          }}>
+          <div className="cv-form-error-banner">
             {error}
           </div>
         )}
 
-        <button
-          type="submit"
-          className="btn btn-primary"
-          style={{ width: '100%', padding: '0.75rem' }}
-          disabled={disabled || loading || !prompt.trim()}
-        >
-          <IconPlay size={16} />
-          {loading ? 'Submitting & Initializing Agent...' : 'Launch Sovereign Agent Run'}
-        </button>
+        {/* Launch Run Button (Bottom Right) */}
+        <div className="cv-form-actions-row">
+          <button
+            type="submit"
+            className="cv-btn-purple-action cv-btn-launch"
+            disabled={disabled || loading || !prompt.trim()}
+            id="btn-launch-run"
+          >
+            <span>{loading ? 'Initializing Agent...' : 'Launch run'}</span>
+            <IconPlay size={16} />
+          </button>
+        </div>
       </form>
-    </Card>
+    </div>
   );
 };

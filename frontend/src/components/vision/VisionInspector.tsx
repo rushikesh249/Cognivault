@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { Badge } from '../common/Badge';
-import { Card } from '../common/Card';
-import { IconAlertTriangle, IconCheck, IconCpu, IconEye, IconInfo, IconUpload } from '../common/Icons';
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconCpu,
+  IconEye,
+  IconShield,
+  IconUpload,
+} from '../common/Icons';
 import { api } from '../../services/api';
 import type { VisionResult } from '../../types';
 
@@ -26,7 +32,7 @@ export const VisionInspector: React.FC = () => {
 
   const handleAnalyze = async () => {
     if (!selectedFile) {
-      setError('Please select an image file first.');
+      setError('Please select an inspection image first.');
       return;
     }
 
@@ -34,7 +40,7 @@ export const VisionInspector: React.FC = () => {
     setError(null);
 
     try {
-      // 1. Upload image to get file_id
+      // 1. Upload image
       const uploadRes = await api.uploadFile(selectedFile);
 
       // 2. Direct vision analysis endpoint
@@ -49,75 +55,64 @@ export const VisionInspector: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Safety Disclaimer Banner */}
-      <div style={{
-        padding: '0.85rem 1.25rem',
-        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-        border: '1px solid rgba(245, 158, 11, 0.3)',
-        borderRadius: '8px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-        color: '#f8fafc'
-      }}>
-        <IconAlertTriangle size={22} color="#f59e0b" />
-        <div style={{ fontSize: '0.825rem' }}>
-          <strong style={{ color: '#f59e0b' }}>MANDATORY SOVEREIGNTY SAFETY DIRECTIVE:</strong>
-          {' '}Direct visual observations and AI interpretations are provided solely for informational and diagnostic reference. Local VLM outputs do NOT constitute certified engineering inspection verdicts or statutory guarantees.
+    <div className="cv-view-layout">
+      {/* Title & Directive Banner */}
+      <div className="cv-directive-banner">
+        <IconAlertTriangle size={22} color="#b45309" />
+        <div className="cv-directive-text">
+          <strong style={{ color: '#92400e' }}>MANDATORY SOVEREIGNTY SAFETY DIRECTIVE:</strong>
+          {' '}Direct visual observations and AI interpretations are provided solely for operational and diagnostic reference. Local VLM outputs do NOT constitute certified statutory engineering verdicts.
         </div>
       </div>
 
-      <div className="grid-2col">
-        {/* Upload & Controls */}
-        <Card title="Multimodal Image Inspector (POST /api/vision/analyze)" icon={<IconEye size={18} color="#38bdf8" />}>
-          <div className="form-group">
-            <label className="form-label">Inspection Image</label>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+      <div className="cv-2col-layout">
+        {/* Left Column: Image Upload & Parameters */}
+        <div className="cv-card cv-vision-form-card">
+          <div className="cv-card-header-row">
+            <div className="cv-card-title-group">
+              <IconEye size={19} color="#4338ca" />
+              <h3 className="cv-card-heading">Multimodal Vision Inspector</h3>
+            </div>
+            <Badge variant="info">VLM Local Pipeline</Badge>
+          </div>
+
+          <div className="cv-form-field">
+            <label className="cv-field-label">Inspection Target Image</label>
+            <div
+              className={`cv-dropzone ${selectedFile ? 'has-file' : ''}`}
+              onClick={() => document.getElementById('vision-file-input')?.click()}
+            >
               <input
                 type="file"
-                id="vision-file-upload"
+                id="vision-file-input"
                 style={{ display: 'none' }}
-                accept=".jpg,.jpeg,.png"
+                accept=".png,.jpg,.jpeg"
                 onChange={handleFileChange}
                 disabled={loading}
               />
-              <label htmlFor="vision-file-upload" className="btn btn-secondary" style={{ cursor: loading ? 'not-allowed' : 'pointer' }}>
-                <IconUpload size={14} />
-                {selectedFile ? 'Change Image' : 'Select Equipment Photo'}
-              </label>
-              {selectedFile && (
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                  {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-                </span>
-              )}
+              <div className="cv-dropzone-content">
+                <div className="cv-dropzone-icon-circle">
+                  <IconUpload size={20} color="#4b5563" />
+                </div>
+                <div className="cv-dropzone-main-text">
+                  {selectedFile ? selectedFile.name : 'Select or drop target image'}
+                </div>
+                <div className="cv-dropzone-sub-text">PNG, JPG up to 20MB</div>
+              </div>
             </div>
           </div>
 
           {imagePreview && (
-            <div style={{
-              margin: '0.75rem 0',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              border: '1px solid var(--border-default)',
-              maxHeight: '260px',
-              display: 'flex',
-              justifyContent: 'center',
-              backgroundColor: '#000'
-            }}>
-              <img
-                src={imagePreview}
-                alt="Inspection Target"
-                style={{ maxWidth: '100%', maxHeight: '260px', objectFit: 'contain' }}
-              />
+            <div className="cv-vision-preview-frame">
+              <img src={imagePreview} alt="Inspection Preview" className="cv-vision-img" />
             </div>
           )}
 
-          <div className="form-group">
-            <label className="form-label">Custom Inspection Prompt (Optional)</label>
+          <div className="cv-form-field">
+            <label className="cv-field-label">Diagnostic Prompt (Optional)</label>
             <textarea
-              className="form-textarea"
-              placeholder="e.g., Detail visible wear patterns, surface corrosion, pitting, and thermal discoloration..."
+              className="cv-textarea"
+              placeholder="e.g., Identify surface micro-fractures, thermal coating oxidation, and measure defect severity..."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               disabled={loading}
@@ -125,112 +120,93 @@ export const VisionInspector: React.FC = () => {
             />
           </div>
 
-          {error && (
-            <div style={{
-              padding: '0.6rem 0.85rem',
-              backgroundColor: 'var(--status-error-bg)',
-              border: '1px solid var(--status-error-border)',
-              borderRadius: '6px',
-              color: 'var(--status-error)',
-              fontSize: '0.8rem',
-              marginBottom: '1rem'
-            }}>
-              {error}
-            </div>
-          )}
+          {error && <div className="cv-form-error-banner">{error}</div>}
 
           <button
             type="button"
-            className="btn btn-primary"
-            style={{ width: '100%', padding: '0.75rem' }}
+            className="cv-btn-purple-action"
             onClick={handleAnalyze}
             disabled={loading || !selectedFile}
           >
             <IconEye size={16} />
-            {loading ? 'Running Local VLM Inference...' : 'Analyze Equipment Image'}
+            <span>{loading ? 'Analyzing on Local VLM...' : 'Execute Local Vision Analysis'}</span>
           </button>
-        </Card>
+        </div>
 
-        {/* Structured Findings Output */}
-        <Card
-          title="Structured Vision Findings"
-          icon={<IconInfo size={18} color="#38bdf8" />}
-          badge={
-            result ? (
-              <Badge variant="info" icon={<IconCpu size={12} />}>
-                Model: {result.model_used}
+        {/* Right Column: Structured Findings & Reasoning */}
+        <div className="cv-card cv-vision-results-card">
+          <div className="cv-card-header-row">
+            <div className="cv-card-title-group">
+              <IconShield size={19} color="#15803d" />
+              <h3 className="cv-card-heading">Structured Diagnostic Findings</h3>
+            </div>
+            {result && (
+              <Badge variant="neutral">
+                Model: {result.model_used || 'Local VLM'}
               </Badge>
-            ) : null
-          }
-        >
+            )}
+          </div>
+
           {!result ? (
-            <div style={{
-              color: '#64748b',
-              textAlign: 'center',
-              padding: '4rem 1rem',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <IconEye size={36} color="#334155" />
-              <span>Select an image and click analyze to view structured observations, interpretations, and uncertainty caveats.</span>
+            <div className="cv-empty-state-table">
+              <IconEye size={40} color="#9ca3af" />
+              <div className="cv-empty-title">Awaiting Vision Target</div>
+              <div className="cv-empty-desc">
+                Upload an engineering photo, thermal scan, or microscopic defect capture to generate structured observational findings.
+              </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="cv-vision-findings-content">
               {/* Observations */}
-              <div style={{
-                backgroundColor: 'rgba(16, 185, 129, 0.08)',
-                border: '1px solid rgba(16, 185, 129, 0.25)',
-                borderRadius: '8px',
-                padding: '0.85rem'
-              }}>
-                <div style={{ fontSize: '0.825rem', fontWeight: 700, color: '#10b981', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <IconCheck size={14} /> Factual Visual Observations ({result.observation.length})
+              <div className="cv-finding-section">
+                <div className="cv-finding-heading">
+                  <IconCheck size={16} color="#15803d" />
+                  <span>Direct Visual Observations</span>
                 </div>
-                <ul style={{ paddingLeft: '1.2rem', fontSize: '0.8rem', color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  {result.observation.map((obs, idx) => (
-                    <li key={idx}>{obs}</li>
+                <div className="cv-finding-bullets">
+                  {result.observation?.map((obs: string, idx: number) => (
+                    <div key={idx} className="cv-bullet-row">
+                      <span className="cv-bullet-dot" />
+                      <span>{obs}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
 
               {/* Interpretations */}
-              <div style={{
-                backgroundColor: 'rgba(56, 189, 248, 0.08)',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-                borderRadius: '8px',
-                padding: '0.85rem'
-              }}>
-                <div style={{ fontSize: '0.825rem', fontWeight: 700, color: '#38bdf8', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <IconInfo size={14} /> AI Engineering Interpretations ({result.interpretation.length})
+              <div className="cv-finding-section">
+                <div className="cv-finding-heading">
+                  <IconCpu size={16} color="#1d4ed8" />
+                  <span>Engineering Interpretation</span>
                 </div>
-                <ul style={{ paddingLeft: '1.2rem', fontSize: '0.8rem', color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  {result.interpretation.map((interp, idx) => (
-                    <li key={idx}>{interp}</li>
+                <div className="cv-finding-bullets">
+                  {result.interpretation?.map((interp: string, idx: number) => (
+                    <div key={idx} className="cv-bullet-row">
+                      <span className="cv-bullet-dot blue" />
+                      <span>{interp}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
 
-              {/* Uncertainties */}
-              <div style={{
-                backgroundColor: 'rgba(245, 158, 11, 0.08)',
-                border: '1px solid rgba(245, 158, 11, 0.25)',
-                borderRadius: '8px',
-                padding: '0.85rem'
-              }}>
-                <div style={{ fontSize: '0.825rem', fontWeight: 700, color: '#f59e0b', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <IconAlertTriangle size={14} /> Uncertainties & Limitations ({result.uncertainty.length})
+              {/* Uncertainty / Safety Bounds */}
+              <div className="cv-finding-section">
+                <div className="cv-finding-heading">
+                  <IconAlertTriangle size={16} color="#b45309" />
+                  <span>Confidence Bounds & Uncertainty</span>
                 </div>
-                <ul style={{ paddingLeft: '1.2rem', fontSize: '0.8rem', color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  {result.uncertainty.map((uncert, idx) => (
-                    <li key={idx}>{uncert}</li>
+                <div className="cv-finding-bullets">
+                  {result.uncertainty?.map((unc: string, idx: number) => (
+                    <div key={idx} className="cv-bullet-row">
+                      <span className="cv-bullet-dot amber" />
+                      <span>{unc}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ logger = logging.getLogger("sovereign_workbench.services.file")
 
 MAGIC_SIGNATURES = {
     "application/pdf": b"%PDF",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": b"PK\x03\x04",
     "image/jpeg": b"\xff\xd8\xff",
     "image/png": b"\x89PNG\r\n\x1a\n",
 }
@@ -91,7 +92,7 @@ class FileService:
         with open(target_path, "wb") as f:
             f.write(content)
 
-        # 5. Extract page count if PDF
+        # 5. Extract page count if PDF or DOCX
         pages: Optional[int] = None
         if content_type == "application/pdf":
             try:
@@ -100,6 +101,15 @@ class FileService:
                 doc.close()
             except Exception as e:
                 logger.warning(f"Failed to inspect PDF pages: {e}")
+                pages = 1
+        elif content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            try:
+                import docx
+                doc_obj = docx.Document(io.BytesIO(content))
+                # Count sections or non-empty paragraphs as structural units
+                pages = max(1, len(doc_obj.sections))
+            except Exception as e:
+                logger.warning(f"Failed to inspect DOCX sections: {e}")
                 pages = 1
 
         # 6. Register in SQLite files table

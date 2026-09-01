@@ -126,9 +126,14 @@ class OCRSettings(BaseModel):
 
 class UploadSettings(BaseModel):
     """File upload limits and validation (TRD Table 11)."""
-    max_upload_bytes: int = Field(default=10485760, description="Max allowed upload file size (10 MB)")
+    max_upload_bytes: int = Field(default=52428800, description="Max allowed upload file size (50 MB)")
     allowed_mime_types: List[str] = Field(
-        default_factory=lambda: ["application/pdf", "image/jpeg", "image/png"],
+        default_factory=lambda: [
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "image/jpeg",
+            "image/png",
+        ],
         description="Permitted MIME types for upload",
     )
 
