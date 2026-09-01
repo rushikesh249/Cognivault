@@ -222,81 +222,109 @@ def render_pdf_report(data: Dict[str, Any], output_path: Path) -> Path:
     story.append(meta_table)
     story.append(Spacer(1, 10))
 
-    # 3. Section 1: Inspection Overview & Summary
-    story.append(Paragraph("1. Inspection Overview & Summary", section_style))
-    summary_text = str(data.get(
-        "summary",
-        "Autonomous document intelligence analysis was executed on the submitted inspection report. "
-        "The document was processed through the Sovereign OCR engine and compared against the indexed standard "
-        "operating procedures (SOPs), maintenance guidelines, and equipment compliance standards."
-    ))
-    story.append(Paragraph(summary_text, body_style))
-    story.append(Spacer(1, 6))
+    # 3. Content Sections
+    sections_payload = data.get("sections")
+    if sections_payload and isinstance(sections_payload, list):
+        for sec_idx, sec in enumerate(sections_payload, start=1):
+            heading = str(sec.get("heading", f"Section {sec_idx}"))
+            content = sec.get("content", "")
+            story.append(Paragraph(f"{sec_idx}. {heading}", section_style))
+            if isinstance(content, list):
+                for item in content:
+                    story.append(Paragraph(f"• {item}", bullet_style))
+            else:
+                story.append(Paragraph(str(content), body_style))
+            story.append(Spacer(1, 6))
 
-    # 4. Section 2: Critical Findings
-    story.append(Paragraph("2. Critical Inspection Findings", section_style))
-    raw_findings = data.get("critical_findings", [
-        "Corrosion fatigue detected on primary discharge flange bolts exceeding 1.5mm wall thinning threshold.",
-        "Pressure relief valve PRV-204 calibration interval exceeded maximum allowable 12-month limit.",
-        "Emergency shutdown bypass valve seal integrity compromised with visible weeping of seal fluid."
-    ])
-    for f in raw_findings:
-        story.append(Paragraph(f"• {f}", bullet_style))
-    story.append(Spacer(1, 6))
-
-    # 5. Section 3: Compliance Gaps Table
-    story.append(Paragraph("3. Compliance Gaps & Authoritative Standard Citations", section_style))
-    raw_gaps = data.get("compliance_gaps", [
-        ("Discharge Flange Wall Thinning", "Safety SOP - Section 4.2 Emergency Shutdown Systems (p.12)", "CRITICAL NON-COMPLIANCE"),
-        ("PRV-204 Recertification Overdue", "Equipment Standards - Section 11.4 Relief Valve Recertification (p.56)", "MAJOR GAP"),
-        ("Seal Integrity Weeping", "Maintenance Manual - Section 8.1 Flange Integrity & Bolt Torquing (p.34)", "MODERATE GAP"),
-    ])
-
-    gap_table_data = [[
-        Paragraph("Observed Finding / Defect", table_header_style),
-        Paragraph("Authoritative SOP Citation", table_header_style),
-        Paragraph("Compliance Rating", table_header_style),
-    ]]
-
-    for item in raw_gaps:
-        if isinstance(item, (list, tuple)) and len(item) >= 3:
-            d_val, c_val, r_val = item[0], item[1], item[2]
+        # Sources & Grounding Section
+        sources = data.get("sources", []) or data.get("citations", [])
+        grounding_note = data.get("grounding_note")
+        story.append(Paragraph(f"{len(sections_payload) + 1}. Sources & Grounding", section_style))
+        if sources:
+            for src in sources:
+                story.append(Paragraph(f"• {src}", bullet_style))
         else:
-            d_val, c_val, r_val = str(item), "Standard SOP", "NON-COMPLIANCE"
+            story.append(Paragraph("Grounding: Directly from source input image.", body_style))
+        if grounding_note:
+            story.append(Paragraph(f"<i>{grounding_note}</i>", body_style))
+        story.append(Spacer(1, 8))
+    else:
+        # Default Document Compliance Template
+        # 3. Section 1: Inspection Overview & Summary
+        story.append(Paragraph("1. Inspection Overview & Summary", section_style))
+        summary_text = str(data.get(
+            "summary",
+            "Autonomous document intelligence analysis was executed on the submitted inspection report. "
+            "The document was processed through the Sovereign OCR engine and compared against the indexed standard "
+            "operating procedures (SOPs), maintenance guidelines, and equipment compliance standards."
+        ))
+        story.append(Paragraph(summary_text, body_style))
+        story.append(Spacer(1, 6))
 
-        r_style = table_cell_alert if ("CRITICAL" in str(r_val) or "NON-COMPLIANCE" in str(r_val)) else table_cell_style
-        gap_table_data.append([
-            Paragraph(str(d_val), table_cell_style),
-            Paragraph(str(c_val), table_cell_style),
-            Paragraph(str(r_val), r_style),
+        # 4. Section 2: Critical Findings
+        story.append(Paragraph("2. Critical Inspection Findings", section_style))
+        raw_findings = data.get("critical_findings", [
+            "Corrosion fatigue detected on primary discharge flange bolts exceeding 1.5mm wall thinning threshold.",
+            "Pressure relief valve PRV-204 calibration interval exceeded maximum allowable 12-month limit.",
+            "Emergency shutdown bypass valve seal integrity compromised with visible weeping of seal fluid."
+        ])
+        for f in raw_findings:
+            story.append(Paragraph(f"• {f}", bullet_style))
+        story.append(Spacer(1, 6))
+
+        # 5. Section 3: Compliance Gaps Table
+        story.append(Paragraph("3. Compliance Gaps & Authoritative Standard Citations", section_style))
+        raw_gaps = data.get("compliance_gaps", [
+            ("Discharge Flange Wall Thinning", "Safety SOP - Section 4.2 Emergency Shutdown Systems (p.12)", "CRITICAL NON-COMPLIANCE"),
+            ("PRV-204 Recertification Overdue", "Equipment Standards - Section 11.4 Relief Valve Recertification (p.56)", "MAJOR GAP"),
+            ("Seal Integrity Weeping", "Maintenance Manual - Section 8.1 Flange Integrity & Bolt Torquing (p.34)", "MODERATE GAP"),
         ])
 
-    gap_table = Table(gap_table_data, colWidths=[2.4 * inch, 3.1 * inch, 1.5 * inch])
-    gap_table.setStyle(
-        TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), NAVY_COLOR),
-            ("BOX", (0, 0), (-1, -1), 0.5, NAVY_COLOR),
-            ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, ALT_ROW_COLOR]),
-        ])
-    )
-    story.append(gap_table)
-    story.append(Spacer(1, 10))
+        gap_table_data = [[
+            Paragraph("Observed Finding / Defect", table_header_style),
+            Paragraph("Authoritative SOP Citation", table_header_style),
+            Paragraph("Compliance Rating", table_header_style),
+        ]]
 
-    # 6. Section 4: Actionable Recommendations
-    story.append(Paragraph("4. Actionable Engineering Recommendations", section_style))
-    raw_recs = data.get("recommendations", [
-        "Initiate immediate scheduled depressurization and replacement of flange bolting assembly.",
-        "Perform off-line hydrostatic bench testing and recertification for PRV-204 within 48 hours.",
-        "Replace primary mechanical seal pack on pump P-102A prior to resuming continuous service."
-    ])
-    for idx, rec in enumerate(raw_recs, start=1):
-        story.append(Paragraph(f"<b>4.{idx}</b> {rec}", bullet_style))
-    story.append(Spacer(1, 10))
+        for item in raw_gaps:
+            if isinstance(item, (list, tuple)) and len(item) >= 3:
+                d_val, c_val, r_val = item[0], item[1], item[2]
+            else:
+                d_val, c_val, r_val = str(item), "Standard SOP", "NON-COMPLIANCE"
+
+            r_style = table_cell_alert if ("CRITICAL" in str(r_val) or "NON-COMPLIANCE" in str(r_val)) else table_cell_style
+            gap_table_data.append([
+                Paragraph(str(d_val), table_cell_style),
+                Paragraph(str(c_val), table_cell_style),
+                Paragraph(str(r_val), r_style),
+            ])
+
+        gap_table = Table(gap_table_data, colWidths=[2.4 * inch, 3.1 * inch, 1.5 * inch])
+        gap_table.setStyle(
+            TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), NAVY_COLOR),
+                ("BOX", (0, 0), (-1, -1), 0.5, NAVY_COLOR),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, ALT_ROW_COLOR]),
+            ])
+        )
+        story.append(gap_table)
+        story.append(Spacer(1, 10))
+
+        # 6. Section 4: Actionable Recommendations
+        story.append(Paragraph("4. Actionable Engineering Recommendations", section_style))
+        raw_recs = data.get("recommendations", [
+            "Initiate immediate scheduled depressurization and replacement of flange bolting assembly.",
+            "Perform off-line hydrostatic bench testing and recertification for PRV-204 within 48 hours.",
+            "Replace primary mechanical seal pack on pump P-102A prior to resuming continuous service."
+        ])
+        for idx, rec in enumerate(raw_recs, start=1):
+            story.append(Paragraph(f"<b>4.{idx}</b> {rec}", bullet_style))
+        story.append(Spacer(1, 10))
 
     # 7. Section 5: Engineering Review Sign-off Block
     prep_status = data.get("status") or "Analyzed on-premise"

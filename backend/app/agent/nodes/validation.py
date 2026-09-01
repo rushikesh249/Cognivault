@@ -253,7 +253,7 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
                                 if "local-general-model" in doc_text:
                                     validation_passed = False
                                     validation_notes = "DOCX artifact contains invalid model reference 'local-general-model' for vision task."
-                                elif "Visual Observations" not in doc_text and "Visual Inspection" not in doc_text:
+                                elif "Visual Findings" not in doc_text and "Visual Observations" not in doc_text and "Visual Inspection" not in doc_text:
                                     validation_passed = False
                                     validation_notes = "DOCX artifact missing required visual observation section."
                                 else:

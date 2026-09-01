@@ -58,9 +58,9 @@ def test_upload_magic_signature_mismatch_returns_400():
 
 
 def test_upload_oversized_file_returns_413():
-    """Verify file exceeding 10 MB limit returns 413 Payload Too Large."""
+    """Verify file exceeding maximum upload limit (50 MB) returns 413 Payload Too Large."""
     client = TestClient(app)
-    oversized = b"%PDF" + (b"0" * (11 * 1024 * 1024))  # 11 MB
+    oversized = b"%PDF" + (b"0" * (51 * 1024 * 1024))  # 51 MB
     response = client.post(
         "/api/files/upload",
         files={"file": ("big.pdf", oversized, "application/pdf")},

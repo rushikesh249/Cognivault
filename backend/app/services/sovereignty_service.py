@@ -69,7 +69,7 @@ class SovereigntyAppService:
         # local_sandbox
         local_sandbox_status = "ok"
         try:
-            if not self._docker_runner.is_docker_available():
+            if not self._docker_runner.is_available():
                 local_sandbox_status = "degraded"
         except Exception:
             local_sandbox_status = "degraded"

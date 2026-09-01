@@ -185,17 +185,16 @@ def tool_selection_node(state: AgentState) -> Dict[str, Any]:
                 with get_db_context() as session:
                     repo = FileRepository(session)
                     task_files = repo.list_by_task_id(task_id)
-                    if task_files:
-                        file_id = task_files[0].file_id
+                    # Filter for files that genuinely exist on disk
+                    existing_task_files = [f for f in task_files if Path(f.storage_path).exists()]
+                    if existing_task_files:
+                        file_id = existing_task_files[0].file_id
                     else:
-                        all_files = repo.list_files(limit=5)
-                        if all_files and ("MRPL-INSP" not in goal and "scanned_inspection_report" not in goal):
-                            file_id = all_files[0].file_id
+                        all_files = repo.list_files(limit=10)
+                        valid_files = [f for f in all_files if Path(f.storage_path).exists()]
+                        if valid_files and ("MRPL-INSP" not in goal and "scanned_inspection_report" not in goal):
+                            file_id = valid_files[0].file_id
                             repo.attach_to_task(file_id, task_id)
-                        elif "MRPL-INSP" in goal or "scanned_inspection_report" in goal or "Hero Flow 1" in goal:
-                            file_id = "scanned_inspection_report.pdf"
-                        elif all_files:
-                            file_id = all_files[0].file_id
                         else:
                             file_id = "scanned_inspection_report.pdf"
 

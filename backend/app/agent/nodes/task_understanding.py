@@ -46,6 +46,17 @@ def task_understanding_node(state: AgentState) -> Dict[str, Any]:
                         session.commit()
             except Exception:
                 pass
+    elif any(k in goal_lower for k in ["factorial", "function", "unit test", "pytest", "docker sandbox", "python code", "algorithm", "self-correct", "debug", "refactor"]):
+        task_type = "coding"
+        try:
+            with get_db_context() as session:
+                t_repo = TaskRepository(session)
+                t_obj = t_repo.get_by_id(task_id)
+                if t_obj and t_obj.task_type != "coding":
+                    t_obj.task_type = "coding"
+                    session.commit()
+        except Exception:
+            pass
 
     if task_type not in ["document", "coding", "vision"]:
         task_type = "document"

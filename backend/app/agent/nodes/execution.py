@@ -117,7 +117,7 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                     obs_list = latest_vision_res.get("observation", [])
                     interp_list = latest_vision_res.get("interpretation", [])
                     uncert_list = latest_vision_res.get("uncertainty", [])
-                    vision_model_used = latest_vision_res.get("model_used") or "local-vision-model"
+                    vision_model_used = state.get("selected_model_id") or latest_vision_res.get("model_used") or "local-vision-model"
 
                     # Resolve source image filename
                     source_doc = "uploaded image"
@@ -127,13 +127,37 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                         if task_files:
                             source_doc = task_files[0].filename
 
-                    task_title = _task_title(task_id) or "Visual Inspection Analysis Report"
+                    task_title = _task_title(task_id) or "Industrial Equipment Visual Inspection Report"
+
+                    # Build vision-specific sections (TRD Component #13 / ADR-007)
+                    visible_components = [
+                        obs for obs in obs_list
+                        if any(k in obs.lower() for k in ["pipe", "flange", "joint", "screw", "bolt", "fastener", "metal", "assembly", "weld", "valve"])
+                    ]
+                    observed_defects = [
+                        obs for obs in obs_list
+                        if any(k in obs.lower() for k in ["corrosion", "rust", "peeling", "paint", "deteriorat", "crack", "wear", "gap", "defect", "damage"])
+                    ]
+                    other_observations = [
+                        obs for obs in obs_list
+                        if obs not in visible_components and obs not in observed_defects
+                    ]
 
                     sections = [
-                        {"heading": "Visual Observations", "content": obs_list},
-                        {"heading": "Engineering Interpretations & Hypotheses", "content": interp_list},
-                        {"heading": "Uncertainties & Inspection Limitations", "content": uncert_list},
+                        {"heading": "Visual Findings", "content": obs_list},
                     ]
+                    if visible_components:
+                        sections.append({"heading": "Visible Objects / Components", "content": visible_components})
+                    if observed_defects:
+                        sections.append({"heading": "Condition / Defects Observed", "content": observed_defects})
+                    if other_observations:
+                        sections.append({"heading": "Additional Visual Observations", "content": other_observations})
+                    if interp_list:
+                        sections.append({"heading": "Engineering Interpretations & Hypotheses", "content": interp_list})
+                    if uncert_list:
+                        sections.append({"heading": "Limitations / Uncertain Observations", "content": uncert_list})
+
+                    summary_text = "; ".join(obs_list) if obs_list else "Visual inspection completed."
 
                     doc_payload = {
                         "title": task_title,
@@ -141,10 +165,10 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                         "source_document": source_doc,
                         "facility": f"Source image: {source_doc}",
                         "status": f"Analyzed via {vision_model_used} (on-premise)",
-                        "summary": "; ".join(obs_list) if obs_list else "Visual inspection completed.",
+                        "summary": summary_text,
                         "sections": sections,
                         "sources": [f"Uploaded image: {source_doc}"],
-                        "grounding_note": "All findings in this report are grounded exclusively in visual features extracted via local-vision-model. No statutory certification or certified inspection verdict is implied.",
+                        "grounding_note": f"All findings in this report are grounded exclusively in visual features extracted via {vision_model_used}. No statutory certification or certified inspection verdict is implied.",
                         "template": "structured_report",
                     }
 
@@ -228,6 +252,8 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                             attached_file_id = demo_img.name
                             source_filename = demo_img.name
 
+                vision_model_to_use = state.get("selected_model_id") or "local-vision-model"
+
                 try:
                     from backend.app.services.vision_service import get_vision_app_service
                     vision_app = get_vision_app_service()
@@ -235,20 +261,20 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                         v_res = vision_app.analyze_file(file_id=attached_file_id, prompt=state.get("goal"))
                         raw_result = {
                             "type": "vision",
-                            "model_id": "local-vision-model",
+                            "model_id": v_res.model_used or vision_model_to_use,
                             "success": True,
                             "vision_result": v_res.model_dump(),
                         }
                         broadcaster.log_and_emit(
                             task_id=task_id,
                             node="execution",
-                            message=f"Completed multimodal VLM analysis via 'local-vision-model' on image '{source_filename}'.",
+                            message=f"Completed multimodal VLM analysis via '{v_res.model_used or vision_model_to_use}' on image '{source_filename}'.",
                             level="info",
                         )
                     else:
                         raw_result = {
                             "type": "vision",
-                            "model_id": "local-vision-model",
+                            "model_id": vision_model_to_use,
                             "success": False,
                             "error": "No image file attached for vision task.",
                             "execution_status": "error",
@@ -264,7 +290,7 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                     logger.error(f"[{task_id}] Multimodal vision execution error: {e}", exc_info=True)
                     raw_result = {
                         "type": "vision",
-                        "model_id": "local-vision-model",
+                        "model_id": vision_model_to_use,
                         "success": False,
                         "error": str(e),
                         "execution_status": "error",

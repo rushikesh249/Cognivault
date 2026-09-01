@@ -44,15 +44,11 @@ def generate_default_plan(task_type: str, goal: str) -> List[str]:
                 "Analyze inspection image with local vision-language model",
                 "Generate visual inspection report PDF artifact",
             ]
-        elif "docx" in goal_lower or "report" in goal_lower or "artifact" in goal_lower or "document" in goal_lower:
+        else:
             return [
                 "Analyze inspection image with local vision-language model",
                 "Generate visual inspection report DOCX artifact",
             ]
-        return [
-            "Analyze inspection image with local vision-language model",
-            "Extract structured visual observations, interpretations, and uncertainties",
-        ]
     return ["Analyze requirements and synthesize deliverable"]
 
 
