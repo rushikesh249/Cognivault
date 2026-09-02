@@ -11,7 +11,6 @@ import {
 } from '../common/Icons';
 import { GraphVisualizer } from '../agent/GraphVisualizer';
 import { LiveEventFeed } from '../agent/LiveEventFeed';
-import { HeroVisionInspector } from './HeroVisionInspector';
 import { useTaskStream } from '../../hooks/useTaskStream';
 import { api } from '../../services/api';
 import type { ArtifactMeta, TaskCreatePayload } from '../../types';
@@ -304,10 +303,6 @@ export const HeroFlowLauncher: React.FC<HeroFlowLauncherProps> = ({ onOpenInWork
           taskDetail?.model_used ||
           (isVisionTask ? 'llava:7b-v1.5-q4_K_M' : taskDetail?.task_type === 'coding' ? 'qwen2.5-coder:7b' : 'qwen2.5:7b-instruct');
 
-        // Check for model health / infrastructure warnings in stream
-        const healthEvent = events.find((e) => e.message.includes('[model_health]') || e.message.includes('Infrastructure failure'));
-        const modelUnavailable = Boolean(healthEvent) || (effectiveStatus === 'failed' && events.some(e => e.message.toLowerCase().includes('unavailable') || e.message.toLowerCase().includes('timeout')));
-
         return (
           <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="cv-card">
@@ -361,24 +356,8 @@ export const HeroFlowLauncher: React.FC<HeroFlowLauncherProps> = ({ onOpenInWork
                 isStreaming={isStreaming}
               />
 
-              {/* Multimodal Vision Specific Professional Inspection Inspector */}
-              {isVisionTask && (
-                <HeroVisionInspector
-                  taskDetail={taskDetail}
-                  events={events}
-                  isStreaming={isStreaming}
-                  isTerminal={Boolean(isTerminal)}
-                  effectiveStatus={effectiveStatus}
-                  modelUnavailable={modelUnavailable}
-                  artifacts={artifacts}
-                  activeNode={activeNode}
-                  iteration={iteration}
-                  maxIterations={maxIterations}
-                />
-              )}
-
-              {/* Generated Deliverables Download Strip (For Document and Coding tasks) */}
-              {!isVisionTask && artifacts.length > 0 && (
+              {/* Generated Deliverables Download Strip */}
+              {artifacts.length > 0 && (
                 <div className="cv-task-deliverables-section" style={{ marginTop: '1rem' }}>
                   <div className="cv-deliverables-header">
                     <span className="cv-deliverables-title">
