@@ -39,6 +39,7 @@ export const HeroFlowLauncher: React.FC<HeroFlowLauncherProps> = ({ onOpenInWork
     finalStatus,
     taskDetail,
     reconnectCount,
+    reset,
   } = useTaskStream(currentTaskId);
 
   const isTerminal = Boolean(finalStatus) || isComplete || (taskDetail && ['succeeded', 'failed', 'failed_bounded'].includes(taskDetail.status));
@@ -75,6 +76,7 @@ export const HeroFlowLauncher: React.FC<HeroFlowLauncherProps> = ({ onOpenInWork
       return;
     }
 
+    reset();
     setLoadingHero('hero1');
     setError(null);
     setArtifacts([]);
@@ -105,6 +107,7 @@ export const HeroFlowLauncher: React.FC<HeroFlowLauncherProps> = ({ onOpenInWork
       return;
     }
 
+    reset();
     setLoadingHero('hero2');
     setError(null);
     setArtifacts([]);
@@ -135,6 +138,7 @@ export const HeroFlowLauncher: React.FC<HeroFlowLauncherProps> = ({ onOpenInWork
       return;
     }
 
+    reset();
     setLoadingHero('hero3');
     setError(null);
     setArtifacts([]);

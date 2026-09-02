@@ -52,6 +52,8 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
   const streamRef = useRef<TaskEventStream | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const isTerminalRef = useRef<boolean>(false);
+  // Track active task ID to isolate asynchronous callbacks and prevent race conditions
+  const currentTaskIdRef = useRef<string | null>(taskId);
 
   const reset = useCallback(() => {
     if (streamRef.current) {
@@ -77,10 +79,14 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
     setReconnectCount(0);
   }, []);
 
-  const refreshTask = useCallback(async () => {
-    if (!taskId) return;
+  const refreshTask = useCallback(async (targetTaskId?: string) => {
+    const idToFetch = targetTaskId || taskId;
+    if (!idToFetch) return;
     try {
-      const detail = await api.getTask(taskId);
+      const detail = await api.getTask(idToFetch);
+      // Guard against stale task callbacks
+      if (currentTaskIdRef.current !== idToFetch) return;
+
       setTaskDetail(detail);
       if (['succeeded', 'failed', 'failed_bounded'].includes(detail.status)) {
         setIsComplete(true);
@@ -100,11 +106,18 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
         }
       }
     } catch (err: unknown) {
-      console.warn('Failed to refresh task details:', err);
+      if (currentTaskIdRef.current === idToFetch) {
+        console.warn('Failed to refresh task details:', err);
+      }
     }
   }, [taskId]);
 
-  const processEvent = useCallback((event: TaskEvent) => {
+  const processEvent = useCallback((event: TaskEvent, targetTaskId: string) => {
+    // Strict task isolation: reject events belonging to a previous task or if active task switched
+    if (currentTaskIdRef.current !== targetTaskId || event.task_id !== targetTaskId) {
+      return;
+    }
+
     if (seenEventIdsRef.current.has(event.event_id)) {
       return; // Deduplicate
     }
@@ -162,25 +175,72 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
   }, []);
 
   useEffect(() => {
+    // 1. Clean up previous task stream and pending reconnect timer
+    if (streamRef.current) {
+      streamRef.current.close();
+      streamRef.current = null;
+    }
+    if (reconnectTimeoutRef.current) {
+      window.clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    // 2. Handle null taskId: clear all task-scoped state and do not open stream
     if (!taskId) {
+      currentTaskIdRef.current = null;
+      seenEventIdsRef.current.clear();
+      isTerminalRef.current = false;
+      setEvents([]);
+      setActiveNode(null);
+      setCompletedNodes([]);
+      setIteration(1);
+      setMaxIterations(4);
+      setIsStreaming(false);
+      setIsComplete(false);
+      setFinalStatus(null);
+      setTaskDetail(null);
+      setError(null);
+      setReconnectCount(0);
       return;
     }
 
+    // 3. Handle new active taskId: reset all task-scoped state
+    const activeTaskId = taskId;
+    currentTaskIdRef.current = activeTaskId;
+    seenEventIdsRef.current.clear();
+    isTerminalRef.current = false;
+
+    setEvents([]);
+    setActiveNode(null);
+    setCompletedNodes([]);
+    setIteration(1);
+    setMaxIterations(4);
     setIsStreaming(true);
+    setIsComplete(false);
+    setFinalStatus(null);
+    setTaskDetail(null);
+    setError(null);
+    setReconnectCount(0);
+
     let attempts = 0;
 
     const connectStream = () => {
+      // Guard against stale task changes or terminal state for THIS task
+      if (currentTaskIdRef.current !== activeTaskId) return;
       if (isTerminalRef.current) return;
 
-      const stream = new TaskEventStream(taskId, {
+      const stream = new TaskEventStream(activeTaskId, {
         onOpen: () => {
+          if (currentTaskIdRef.current !== activeTaskId) return;
           setIsStreaming(true);
           setError(null);
         },
         onEvent: (ev) => {
-          processEvent(ev);
+          if (currentTaskIdRef.current !== activeTaskId) return;
+          processEvent(ev, activeTaskId);
         },
         onTerminal: () => {
+          if (currentTaskIdRef.current !== activeTaskId) return;
           setIsStreaming(false);
           setIsComplete(true);
           isTerminalRef.current = true;
@@ -192,9 +252,10 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
             window.clearTimeout(reconnectTimeoutRef.current);
             reconnectTimeoutRef.current = null;
           }
-          void refreshTask();
+          void refreshTask(activeTaskId);
         },
         onError: () => {
+          if (currentTaskIdRef.current !== activeTaskId) return;
           if (isTerminalRef.current) return;
 
           // Attempt bounded exponential backoff only if not terminal
@@ -203,7 +264,7 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
             setReconnectCount(attempts);
             const delay = Math.min(1000 * Math.pow(2, attempts - 1), 8000);
             reconnectTimeoutRef.current = window.setTimeout(() => {
-              if (!isTerminalRef.current) {
+              if (currentTaskIdRef.current === activeTaskId && !isTerminalRef.current) {
                 connectStream();
               }
             }, delay);
@@ -211,7 +272,7 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
             setIsStreaming(false);
             if (!isTerminalRef.current) {
               setError('Connection lost to event stream. Switched to periodic status check.');
-              void refreshTask();
+              void refreshTask(activeTaskId);
             }
           }
         },
@@ -222,8 +283,10 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
     };
 
     // Initial load: fetch task details then connect SSE
-    void refreshTask().then(() => {
-      connectStream();
+    void refreshTask(activeTaskId).then(() => {
+      if (currentTaskIdRef.current === activeTaskId) {
+        connectStream();
+      }
     });
 
     return () => {
@@ -250,7 +313,7 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
     taskDetail,
     error,
     reconnectCount,
-    refreshTask,
+    refreshTask: () => refreshTask(taskId || undefined),
     reset,
   };
 }
