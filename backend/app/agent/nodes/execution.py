@@ -370,6 +370,27 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                             message=f"Completed multimodal VLM analysis via '{v_res.model_used or vision_model_to_use}' on image '{source_filename}'.",
                             level="info",
                         )
+                        for obs in v_res.observation:
+                            broadcaster.log_and_emit(
+                                task_id=task_id,
+                                node="observation",
+                                message=f"[visual_observation] {obs}",
+                                level="info",
+                            )
+                        for interp in v_res.interpretation:
+                            broadcaster.log_and_emit(
+                                task_id=task_id,
+                                node="observation",
+                                message=f"[engineering_interpretation] {interp}",
+                                level="info",
+                            )
+                        for uncert in v_res.uncertainty:
+                            broadcaster.log_and_emit(
+                                task_id=task_id,
+                                node="observation",
+                                message=f"[visual_uncertainty] {uncert}",
+                                level="info",
+                            )
                     else:
                         raw_result = {
                             "type": "vision",

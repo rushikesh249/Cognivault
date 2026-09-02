@@ -11,6 +11,7 @@ import {
 } from '../common/Icons';
 import { GraphVisualizer } from '../agent/GraphVisualizer';
 import { LiveEventFeed } from '../agent/LiveEventFeed';
+import { HeroVisionInspector } from './HeroVisionInspector';
 import { useTaskStream } from '../../hooks/useTaskStream';
 import { api } from '../../services/api';
 import type { ArtifactMeta, TaskCreatePayload } from '../../types';
@@ -307,9 +308,6 @@ export const HeroFlowLauncher: React.FC<HeroFlowLauncherProps> = ({ onOpenInWork
         const healthEvent = events.find((e) => e.message.includes('[model_health]') || e.message.includes('Infrastructure failure'));
         const modelUnavailable = Boolean(healthEvent) || (effectiveStatus === 'failed' && events.some(e => e.message.toLowerCase().includes('unavailable') || e.message.toLowerCase().includes('timeout')));
 
-        // Check for visual observation events
-        const obsEvent = events.find(e => e.node === 'observation' && (e.message.includes('visual observation') || e.message.includes('VLM extracted')));
-
         return (
           <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="cv-card">
@@ -363,71 +361,24 @@ export const HeroFlowLauncher: React.FC<HeroFlowLauncherProps> = ({ onOpenInWork
                 isStreaming={isStreaming}
               />
 
-              {/* Multimodal Vision Specific In-Place Dashboard Panel */}
+              {/* Multimodal Vision Specific Professional Inspection Inspector */}
               {isVisionTask && (
-                <div style={{ marginTop: '1.25rem', display: 'grid', gridTemplateColumns: 'minmax(280px, 320px) 1fr', gap: '1.25rem' }}>
-                  {/* Left: Target Input Image */}
-                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#334155' }}>TARGET INPUT IMAGE</span>
-                      <Badge variant="neutral">Local File</Badge>
-                    </div>
-
-                    <div style={{ width: '100%', height: '180px', borderRadius: '6px', overflow: 'hidden', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <img
-                        src="/synthetic_weld_flange.jpg"
-                        alt="Inspection Target"
-                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                      />
-                    </div>
-
-                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                      <strong>Target:</strong> synthetic_weld_flange.jpg (Industrial Flange Weldment)
-                    </div>
-                  </div>
-
-                  {/* Right: Real Findings or Infrastructure Notice */}
-                  <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#334155' }}>STRUCTURED VISUAL FINDINGS</span>
-                      {effectiveStatus === 'succeeded' && <Badge variant="success">Validated</Badge>}
-                      {effectiveStatus === 'failed' && <Badge variant="error">Infrastructure Error</Badge>}
-                    </div>
-
-                    {modelUnavailable ? (
-                      <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.85rem', color: '#991b1b', fontSize: '0.85rem' }}>
-                        <div style={{ fontWeight: 700, marginBottom: '0.35rem' }}>Local Vision Model Unavailable</div>
-                        <div>Ollama or <code>llava:7b-v1.5-q4_K_M</code> is not reachable on this host.</div>
-                        <div style={{ marginTop: '0.5rem', background: '#ffffff', padding: '0.45rem', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                          ollama pull llava:7b-v1.5-q4_K_M
-                        </div>
-                      </div>
-                    ) : obsEvent ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.83rem' }}>
-                        <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '4px', borderLeft: '3px solid #16a34a' }}>
-                          <strong style={{ color: '#166534' }}>Direct Observations:</strong> {obsEvent.message.replace(/.*?VLM extracted visual observations:?\s*/i, '')}
-                        </div>
-                        <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '4px', borderLeft: '3px solid #2563eb' }}>
-                          <strong style={{ color: '#1e40af' }}>Visible Components:</strong> Pipe flange, bolt fasteners, weld joint, accessible structural surface.
-                        </div>
-                        <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '4px', borderLeft: '3px solid #d97706' }}>
-                          <strong style={{ color: '#92400e' }}>Engineering Interpretation:</strong> Visual indications suggest surface conditions requiring physical non-destructive examination (NDE).
-                        </div>
-                        <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '4px', borderLeft: '3px solid #64748b' }}>
-                          <strong style={{ color: '#475569' }}>Limitations & Uncertainty:</strong> Advisory AI analysis only — does not constitute a certified statutory engineering inspection verdict.
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ color: '#64748b', fontSize: '0.85rem', padding: '1rem', textAlign: 'center' }}>
-                        {isStreaming ? 'Executing multimodal VLM analysis via local Ollama...' : 'Awaiting vision analysis execution.'}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <HeroVisionInspector
+                  taskDetail={taskDetail}
+                  events={events}
+                  isStreaming={isStreaming}
+                  isTerminal={Boolean(isTerminal)}
+                  effectiveStatus={effectiveStatus}
+                  modelUnavailable={modelUnavailable}
+                  artifacts={artifacts}
+                  activeNode={activeNode}
+                  iteration={iteration}
+                  maxIterations={maxIterations}
+                />
               )}
 
-              {/* Generated Deliverables Download Strip */}
-              {artifacts.length > 0 && (
+              {/* Generated Deliverables Download Strip (For Document and Coding tasks) */}
+              {!isVisionTask && artifacts.length > 0 && (
                 <div className="cv-task-deliverables-section" style={{ marginTop: '1rem' }}>
                   <div className="cv-deliverables-header">
                     <span className="cv-deliverables-title">
