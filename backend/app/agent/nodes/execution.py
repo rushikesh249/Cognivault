@@ -129,35 +129,106 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
 
                     task_title = _task_title(task_id) or "Industrial Equipment Visual Inspection Report"
 
-                    # Build vision-specific sections (TRD Component #13 / ADR-007)
-                    visible_components = [
-                        obs for obs in obs_list
-                        if any(k in obs.lower() for k in ["pipe", "flange", "joint", "screw", "bolt", "fastener", "metal", "assembly", "weld", "valve"])
+                    # Build vision-specific sections adhering to exact required terminology
+                    cleaned_obs = [str(o).strip() for o in obs_list if str(o).strip()]
+
+                    component_keywords = [
+                        "pipe", "flange", "joint", "screw", "bolt", "fastener", "metal", "assembly",
+                        "weld", "valve", "pump", "machine", "machinery", "motor", "tank", "vessel",
+                        "gauge", "bracket", "equipment", "fitting", "cable", "wire", "enclosure",
+                        "cylinder", "conduit", "beam", "frame", "piping", "nozzle", "hose",
+                        "flanges", "bolts", "screws", "fasteners", "joints", "machinery", "connection"
                     ]
-                    observed_defects = [
-                        obs for obs in obs_list
-                        if any(k in obs.lower() for k in ["corrosion", "rust", "peeling", "paint", "deteriorat", "crack", "wear", "gap", "defect", "damage"])
+                    site_keywords = [
+                        "ground", "floor", "flooring", "puddle", "water", "mud", "muddy", "dirt",
+                        "soil", "brick", "wall", "cinder block", "cinderblock", "concrete", "gravel",
+                        "asphalt", "surface", "outdoor", "indoor", "lighting", "shadow", "environment",
+                        "workshop", "room", "yard", "trench", "surrounding", "standing water",
+                        "moisture", "terrain", "pavement"
                     ]
-                    other_observations = [
-                        obs for obs in obs_list
-                        if obs not in visible_components and obs not in observed_defects
+                    defect_keywords = [
+                        "corrosion", "rust", "peeling", "paint", "deteriorat", "crack", "wear",
+                        "pitting", "fracture", "chipping", "oxidation", "erosion", "abrasion",
+                        "tear", "leak", "deformation"
                     ]
 
+                    visible_components = []
+                    site_conditions = []
+
+                    for obs in cleaned_obs:
+                        obs_l = obs.lower()
+                        is_site = any(sk in obs_l for sk in site_keywords)
+                        is_comp = any(ck in obs_l for ck in component_keywords)
+
+                        if is_comp and not is_site:
+                            visible_components.append(obs)
+                        elif is_site:
+                            site_conditions.append(obs)
+                        elif is_comp:
+                            visible_components.append(obs)
+
                     sections = [
-                        {"heading": "Visual Findings", "content": obs_list},
+                        {"heading": "Visual Observations", "content": cleaned_obs},
                     ]
                     if visible_components:
                         sections.append({"heading": "Visible Objects / Components", "content": visible_components})
-                    if observed_defects:
-                        sections.append({"heading": "Condition / Defects Observed", "content": observed_defects})
-                    if other_observations:
-                        sections.append({"heading": "Additional Visual Observations", "content": other_observations})
-                    if interp_list:
-                        sections.append({"heading": "Engineering Interpretations & Hypotheses", "content": interp_list})
-                    if uncert_list:
-                        sections.append({"heading": "Limitations / Uncertain Observations", "content": uncert_list})
+                    if site_conditions:
+                        sections.append({"heading": "Site / Surface Conditions", "content": site_conditions})
 
-                    summary_text = "; ".join(obs_list) if obs_list else "Visual inspection completed."
+                    # Engineering Interpretation (Conservative, grounded in actual observations, separate from observations)
+                    engineering_interpretations = []
+                    for interp in interp_list:
+                        interp_str = str(interp).strip()
+                        interp_l = interp_str.lower()
+                        if any(bad in interp_l for bad in ["structural failure", "pressure loss", "unsafe operation", "equipment failure", "catastrophic"]) and not any(dk in interp_l for dk in ["visible", "observed", "evidence"]):
+                            continue
+                        if interp_str and interp_str not in engineering_interpretations:
+                            engineering_interpretations.append(interp_str)
+
+                    has_visible_defects = any(any(dk in obs.lower() for dk in defect_keywords) for obs in cleaned_obs)
+                    if not engineering_interpretations:
+                        if has_visible_defects:
+                            engineering_interpretations.append(
+                                "Visible surface oxidation or coating deterioration suggests atmospheric exposure or protective paint degradation on accessible outer surfaces. Non-destructive examination (NDE) or ultrasonic thickness gauging is recommended to determine underlying wall thickness."
+                            )
+                        else:
+                            engineering_interpretations.append(
+                                "The image depicts an industrial/workshop environment containing machinery and piping. Operational integrity and internal condition cannot be confirmed from the image alone."
+                            )
+                    else:
+                        conservative_statement = "Operational integrity and internal metallurgical condition cannot be confirmed from visual optical inspection alone."
+                        if not any("operational integrity" in ei.lower() or "internal" in ei.lower() for ei in engineering_interpretations):
+                            engineering_interpretations.append(conservative_statement)
+
+                    sections.append({
+                        "heading": "Engineering Interpretation",
+                        "content": engineering_interpretations,
+                    })
+
+                    # Limitations / Uncertainty
+                    limitations = []
+                    for u in uncert_list:
+                        u_str = str(u).strip()
+                        if u_str and u_str not in limitations:
+                            limitations.append(u_str)
+
+                    if not limitations:
+                        limitations = [
+                            "Camera angle and optical resolution limit analysis to visible outer surface features only.",
+                            "Operational integrity and internal condition cannot be confirmed from the image alone.",
+                            "AI advisory analysis only — does not constitute a certified engineering inspection verdict or statutory guarantee.",
+                        ]
+                    else:
+                        disclaimer = "AI advisory analysis only — does not constitute a certified engineering inspection verdict or statutory guarantee."
+                        if not any("certified" in l.lower() for l in limitations):
+                            limitations.append(disclaimer)
+
+                    sections.append({
+                        "heading": "Limitations / Uncertainty",
+                        "content": limitations,
+                    })
+
+                    summary_text = "; ".join(cleaned_obs) if cleaned_obs else "Visual inspection completed."
 
                     doc_payload = {
                         "title": task_title,

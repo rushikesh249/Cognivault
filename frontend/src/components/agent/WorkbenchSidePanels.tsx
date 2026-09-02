@@ -46,7 +46,7 @@ export const WorkbenchSidePanels: React.FC<WorkbenchSidePanelsProps> = ({
             const isActive = activeNode === stg.key && !isTerminal;
             const isCompleted =
               completedNodes.includes(stg.key) ||
-              (isFinalDeliverable && finalStatus === 'succeeded');
+              finalStatus === 'succeeded';
 
             let circleClass = 'pending';
             if (isCompleted) circleClass = 'completed';

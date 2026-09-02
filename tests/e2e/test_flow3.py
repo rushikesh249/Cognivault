@@ -87,7 +87,9 @@ def test_hero_flow_3_multimodal_understanding_end_to_end():
         assert "task_understanding" in node_names
         assert "planning" in node_names
         assert "model_selection" in node_names
+        assert "tool_selection" in node_names
         assert "execution" in node_names
         assert "observation" in node_names
         assert "validation" in node_names
         assert "final_deliverable" in node_names
+        assert any(e.node == "tool_selection" and "vision analysis tool" in e.message for e in events)

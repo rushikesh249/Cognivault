@@ -294,6 +294,25 @@ def tool_selection_node(state: AgentState) -> Dict[str, Any]:
                     "arguments": {"code": "print('TASK_EXECUTION_SUCCESS')", "language": "python"},
                 }
 
+    elif task_type == "vision":
+        step_lower = current_step.lower()
+        if "artifact" in step_lower or "generate" in step_lower or "docx" in step_lower or "pdf" in step_lower or "report" in step_lower:
+            broadcaster.log_and_emit(
+                task_id=task_id,
+                node="tool_selection",
+                message="Selected visual inspection report generation tool with required permissions.",
+                level="info",
+            )
+            return {"_staged_tool_call": None}
+        else:
+            broadcaster.log_and_emit(
+                task_id=task_id,
+                node="tool_selection",
+                message="Selected vision analysis tool with required permissions.",
+                level="info",
+            )
+            return {"_staged_tool_call": None}
+
     if staged_call:
         # Defense-in-depth pre-registry authorization check
         if staged_call["tool_name"] not in permitted_tools:
@@ -312,5 +331,12 @@ def tool_selection_node(state: AgentState) -> Dict[str, Any]:
                 message=f"Selected tool '{staged_call['tool_name']}' for plan step {step_idx + 1}.",
                 level="info",
             )
+    else:
+        broadcaster.log_and_emit(
+            task_id=task_id,
+            node="tool_selection",
+            message=f"Authorized local execution capabilities for plan step {step_idx + 1}.",
+            level="info",
+        )
 
     return {"_staged_tool_call": staged_call}

@@ -85,6 +85,9 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
       if (['succeeded', 'failed', 'failed_bounded'].includes(detail.status)) {
         setIsComplete(true);
         setFinalStatus(detail.status);
+        if (detail.status === 'succeeded') {
+          setCompletedNodes(ORDERED_NODES.filter((n) => n !== 'final_deliverable'));
+        }
         setIsStreaming(false);
         isTerminalRef.current = true;
         if (streamRef.current) {
@@ -113,10 +116,13 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
     if (ORDERED_NODES.includes(nodeName)) {
       setActiveNode(nodeName);
       setCompletedNodes((prev) => {
-        if (!prev.includes(nodeName) && nodeName !== 'final_deliverable') {
-          return [...prev, nodeName];
+        const nodeIdx = ORDERED_NODES.indexOf(nodeName);
+        const predecessorNodes = ORDERED_NODES.slice(0, nodeIdx);
+        const updated = new Set([...prev, ...predecessorNodes]);
+        if (nodeName !== 'final_deliverable') {
+          updated.add(nodeName);
         }
-        return prev;
+        return Array.from(updated);
       });
     }
 
@@ -146,6 +152,7 @@ export function useTaskStream(taskId: string | null): UseTaskStreamResult {
       }
       if (event.message.includes("status='succeeded'")) {
         setFinalStatus('succeeded');
+        setCompletedNodes(ORDERED_NODES.filter((n) => n !== 'final_deliverable'));
       } else if (event.message.includes("status='failed_bounded'")) {
         setFinalStatus('failed_bounded');
       } else if (event.message.includes("status='failed'")) {

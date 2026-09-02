@@ -90,7 +90,7 @@ export const GraphVisualizer: React.FC<GraphVisualizerProps> = ({
           const isActive = activeNode === stg.key && !isTerminal;
           const isCompleted =
             completedNodes.includes(stg.key) ||
-            (isFinalDeliverable && finalStatus === 'succeeded');
+            finalStatus === 'succeeded';
 
           let stateClass = 'pending';
           if (isTerminal) {
