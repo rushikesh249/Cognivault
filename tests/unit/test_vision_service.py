@@ -40,7 +40,12 @@ class MockVisionProvider(ModelProvider):
         return ModelStatus.AVAILABLE if self.available else ModelStatus.UNAVAILABLE
 
     def list_available_models(self):
-        return ["llava:7b-q4_K_M"] if self.available else []
+        return ["llava:7b-v1.5-q4_K_M"] if self.available else []
+
+    def check_model_health(self, model_identifier: str = "local-vision-model") -> dict:
+        if not self.available:
+            return {"available": False, "provider_online": False, "model_found": False, "message": "Mock provider unavailable"}
+        return {"available": True, "provider_online": True, "model_found": True, "message": "Model available"}
 
     def ensure_loaded(self, model_id: str) -> bool:
         return True

@@ -151,7 +151,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                         </td>
                         <td className="cv-td-model">
                           <span className="cv-model-badge-text">
-                            {t.model_used || (t.task_type === 'document' ? 'Llama-3-70B-Instruct' : t.task_type === 'coding' ? 'Qwen-2.5-Coder' : 'LLaVA-1.6-Local')}
+                            {t.model_used || (t.task_type === 'document' ? 'qwen2.5:7b-instruct' : t.task_type === 'coding' ? 'qwen2.5-coder:7b' : 'llava:7b-v1.5-q4_K_M')}
                           </span>
                         </td>
                         <td className="cv-td-duration">

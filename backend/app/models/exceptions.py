@@ -29,3 +29,18 @@ class ModelLoadError(ModelRegistryError):
 class ProviderUnavailable(ModelRegistryError):
     """Raised when the local model provider (e.g., Ollama) is not running/reachable."""
     pass
+
+
+class ModelTimeoutError(ModelRegistryError):
+    """Raised when request to local model provider times out."""
+    pass
+
+
+class ModelConnectionTimeoutError(ModelTimeoutError, ProviderUnavailable):
+    """Raised when connecting to local model provider times out."""
+    pass
+
+
+class ModelInferenceTimeoutError(ModelTimeoutError):
+    """Raised when model inference execution times out."""
+    pass

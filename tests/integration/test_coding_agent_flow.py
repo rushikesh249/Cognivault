@@ -17,8 +17,10 @@ from backend.app.tools.code_tools import ExecuteCodeInput, ExecuteCodeTool, RunT
 
 
 @pytest.fixture(autouse=True)
-def setup_db():
+def setup_db_and_check_docker():
     init_db()
+    if not DockerRunner().is_available():
+        pytest.skip("Docker engine is not running on this host environment")
 
 
 def test_hero_flow_2_injected_failure_self_correction_recovery():

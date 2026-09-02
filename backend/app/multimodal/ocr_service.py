@@ -174,9 +174,9 @@ class OCRService:
                 if not ocr_text and raw_text:
                     ocr_text = raw_text
                     ocr_conf = 0.95
-                elif not ocr_text:
-                    ocr_text = f"[Scanned Content Page {page_num}]"
-                    ocr_conf = 0.50
+                elif not ocr_text or not ocr_text.strip():
+                    ocr_text = f"No readable text was extracted from page {page_num}."
+                    ocr_conf = 0.0
 
                 is_low_conf = ocr_conf < self.confidence_threshold
                 if is_low_conf:
@@ -216,12 +216,13 @@ class OCRService:
 
         preprocessed, prep_status = self.preprocess_image(img)
         text, conf = self._extract_text_from_image_np(preprocessed)
-        if not text:
-            text = f"[Image Content: {file_path.name}]"
-            conf = 0.85
-
-        is_low_conf = conf < self.confidence_threshold
-        if is_low_conf:
+        if not text or not text.strip() or text.strip().startswith("[Image Content:"):
+            text = "No readable text was extracted from the supplied image."
+            conf = 0.0
+            is_low_conf = True
+        else:
+            is_low_conf = conf < self.confidence_threshold
+        if is_low_conf and prep_status != "ocr_low_confidence":
             prep_status = "ocr_low_confidence"
 
         page_res = OCRPageResult(

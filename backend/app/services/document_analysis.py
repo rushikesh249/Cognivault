@@ -201,6 +201,38 @@ class DocumentAnalysisService:
             )
 
         kb_matches = kb_matches or []
+        clean_lower = clean_text.lower()
+        is_unreadable = (
+            "no readable text was extracted" in clean_lower
+            or clean_lower.startswith("[image content:")
+        )
+
+        if is_unreadable:
+            unreadable_msg = "No readable text was extracted from the supplied image."
+            sections_payload = [
+                {"heading": "Main Topic", "content": unreadable_msg},
+                {"heading": "Objectives", "content": NOT_FOUND},
+                {"heading": "Methodology", "content": NOT_FOUND},
+                {"heading": "Key Findings", "content": NOT_FOUND},
+                {"heading": "Conclusions", "content": NOT_FOUND},
+                {"heading": "Overall Summary", "content": unreadable_msg},
+            ]
+            return {
+                "source_document": source_document,
+                "sections": sections_payload,
+                "section_values": {
+                    "main_topic": unreadable_msg,
+                    "objectives": NOT_FOUND,
+                    "methodology": NOT_FOUND,
+                    "key_findings": NOT_FOUND,
+                    "conclusions": NOT_FOUND,
+                },
+                "key_findings": [],
+                "summary": unreadable_msg,
+                "analysis_model": "rule-based-extraction",
+                "grounding_verified": True,
+            }
+
         kb_text = "\n".join(str(m.get("text", ""))[:MAX_KB_CHUNK_CHARS] for m in kb_matches[:MAX_KB_CHUNKS])
         source_lower = clean_text.lower()
         kb_lower = kb_text.lower()

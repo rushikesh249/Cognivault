@@ -170,7 +170,7 @@ stateDiagram-v2
 - **Open-Weight Models**:
   - `qwen2.5:7b-instruct-q4_K_M` (General Reasoning & Document Synthesis)
   - `qwen2.5-coder:7b-instruct-q4_K_M` (Code Synthesis & Sandbox Debugging)
-  - `llava:7b-q4_K_M` (Multimodal Vision & Inspection)
+  - `llava:7b-v1.5-q4_K_M` (Multimodal Vision & Inspection)
 - **Embeddings**: `BAAI/bge-small-en-v1.5` (384-dimensional dense vectors, fully local)
 - **Vector DB**: ChromaDB (`anonymized_telemetry: false`, local disk persistence at `data/chroma`)
 
@@ -211,7 +211,7 @@ Start the Ollama daemon, then pull the three required quantized models:
 # Pull models via Ollama CLI (or run bash scripts/pull_models.sh on Linux)
 ollama pull qwen2.5:7b-instruct-q4_K_M
 ollama pull qwen2.5-coder:7b-instruct-q4_K_M
-ollama pull llava:7b-q4_K_M
+ollama pull llava:7b-v1.5-q4_K_M
 ```
 
 ---

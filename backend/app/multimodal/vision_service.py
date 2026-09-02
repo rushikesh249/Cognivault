@@ -5,11 +5,16 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
-from backend.app.models.exceptions import ModelUnavailable, ProviderUnavailable
+from backend.app.models.exceptions import (
+    ModelInferenceTimeoutError,
+    ModelTimeoutError,
+    ModelUnavailable,
+    ProviderUnavailable,
+)
 from backend.app.models.ollama_adapter import OllamaAdapter
 from backend.app.models.provider import ModelProvider
 
@@ -26,7 +31,7 @@ FORBIDDEN_VERDICT_PATTERNS = [
 
 
 class VisionResult(BaseModel):
-    """Structured response schema for multimodal vision findings (TRD ?18.1, Table 16)."""
+    """Structured response schema for multimodal vision findings (TRD Section 18.1, Table 16)."""
     observation: List[str] = Field(..., description="What is visibly present with zero inference")
     interpretation: List[str] = Field(default_factory=list, description="AI engineering hypothesis or reading")
     uncertainty: List[str] = Field(default_factory=list, description="Explicit hedges and limitations")
@@ -40,6 +45,11 @@ class VisionServiceError(Exception):
 
 class VisionModelUnavailableError(VisionServiceError):
     """Raised when the configured local VLM is unavailable or unreachable."""
+    pass
+
+
+class VisionTimeoutError(VisionServiceError):
+    """Raised when VLM inference times out."""
     pass
 
 
@@ -171,6 +181,7 @@ class VisionService:
         prompt: Optional[str] = None,
         model_id: str = "local-vision-model",
         model_path: Optional[str] = None,
+        on_retry: Optional[Callable[[int, int, str], None]] = None,
     ) -> VisionResult:
         """Execute multimodal vision analysis on an image file."""
         b64_image = self.encode_image(image_path)
@@ -178,22 +189,56 @@ class VisionService:
 
         target_model = model_path or model_id
 
+        # 1. Health check: check if Ollama is reachable and model is available locally
+        if hasattr(self._provider, "check_model_health"):
+            health = self._provider.check_model_health(target_model)
+            if not health.get("available", False):
+                msg = health.get("message", f"Local vision model unavailable: {target_model}")
+                logger.error(f"[model_health] {msg}")
+                raise VisionModelUnavailableError(msg)
+        elif hasattr(self._provider, "is_provider_available"):
+            if not self._provider.is_provider_available():
+                msg = f"Local Ollama provider is unreachable. Please ensure Ollama is running."
+                logger.error(f"[model_health] {msg}")
+                raise VisionModelUnavailableError(msg)
+            if hasattr(self._provider, "is_model_available") and not self._provider.is_model_available(target_model):
+                msg = f"Local vision model unavailable: {target_model}. Run: ollama pull {target_model}"
+                logger.error(f"[model_health] {msg}")
+                raise VisionModelUnavailableError(msg)
+
         logger.info(
             f"[VLM_INFERENCE_START] Model: '{target_model}', Image: '{image_path.name}' "
             f"({image_path.stat().st_size} bytes, b64_len={len(b64_image)})"
         )
 
         try:
-            raw_response = self._provider.generate(
-                model_id=target_model,
-                prompt=effective_prompt,
-                images=[b64_image],
-                system=VISION_SYSTEM_PROMPT,
-                format="json",
-            )
+            # Check if generate supports retry/timeout kwargs
+            try:
+                raw_response = self._provider.generate(
+                    model_id=target_model,
+                    prompt=effective_prompt,
+                    images=[b64_image],
+                    system=VISION_SYSTEM_PROMPT,
+                    format="json",
+                    timeout=settings.ollama.vision_timeout_s,
+                    max_retries=settings.ollama.max_retries,
+                    on_retry=on_retry,
+                )
+            except TypeError:
+                # Fallback for mock providers that don't accept extra kwargs
+                raw_response = self._provider.generate(
+                    model_id=target_model,
+                    prompt=effective_prompt,
+                    images=[b64_image],
+                    system=VISION_SYSTEM_PROMPT,
+                    format="json",
+                )
             logger.info(f"[VLM_INFERENCE_RESPONSE] Raw Response: {raw_response[:300]}")
+        except ModelInferenceTimeoutError as e:
+            logger.error(f"[model_health] Local VLM '{target_model}' timed out after retries: {e}")
+            raise VisionTimeoutError(f"Local vision model timed out: {e}") from e
         except (ModelUnavailable, ProviderUnavailable) as e:
-            logger.error(f"Local VLM '{target_model}' is unavailable: {e}")
+            logger.error(f"[model_health] Local VLM '{target_model}' is unavailable: {e}")
             raise VisionModelUnavailableError(f"Local vision model unavailable: {e}") from e
         except Exception as e:
             if isinstance(e, VisionServiceError):

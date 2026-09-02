@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 from backend.app.core.config import settings
 from backend.app.models.exceptions import ModelUnavailable, ProviderUnavailable
 from backend.app.models.model_registry import ModelRegistry
@@ -13,6 +13,7 @@ from backend.app.multimodal.vision_service import (
     VisionOutputValidationError,
     VisionResult,
     VisionService,
+    VisionTimeoutError,
     get_vision_service,
 )
 from backend.app.persistence.db import get_db_context
@@ -48,6 +49,7 @@ class VisionAppService:
         self,
         file_id: str,
         prompt: Optional[str] = None,
+        on_retry: Optional[Callable[[int, int, str], None]] = None,
     ) -> VisionResult:
         """Resolve file from repository, route model, and execute vision analysis."""
         if not file_id or not file_id.strip():
@@ -99,7 +101,7 @@ class VisionAppService:
                     f"Expected .jpg, .jpeg, or .png."
                 )
 
-        # 3. Model routing via declarative ModelRouter (TRD ?14, ?14.1)
+        # 3. Model routing via declarative ModelRouter (TRD Section 14, Section 14.1)
         registry = ModelRegistry()
         try:
             selected_model_id = ModelRouter.select_for_task_type(
@@ -122,7 +124,11 @@ class VisionAppService:
                 prompt=prompt,
                 model_id=selected_model_id,
                 model_path=model_path,
+                on_retry=on_retry,
             )
+        except VisionTimeoutError as e:
+            logger.error(f"Vision model timed out: {e}")
+            raise
         except (VisionModelUnavailableError, ModelUnavailable, ProviderUnavailable) as e:
             logger.error(f"Vision model unavailable: {e}")
             raise VisionModelUnavailableError(str(e)) from e

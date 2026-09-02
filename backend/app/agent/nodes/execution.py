@@ -167,6 +167,8 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                         elif is_comp:
                             visible_components.append(obs)
 
+                    additional_obs = [o for o in cleaned_obs if o not in visible_components and o not in site_conditions]
+
                     sections = [
                         {"heading": "Visual Observations", "content": cleaned_obs},
                     ]
@@ -174,8 +176,10 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                         sections.append({"heading": "Visible Objects / Components", "content": visible_components})
                     if site_conditions:
                         sections.append({"heading": "Site / Surface Conditions", "content": site_conditions})
+                    if additional_obs:
+                        sections.append({"heading": "Additional Visual Observations", "content": additional_obs})
 
-                    # Engineering Interpretation (Conservative, grounded in actual observations, separate from observations)
+                    # Engineering Interpretation / Hypotheses (Conservative, grounded in actual observations)
                     engineering_interpretations = []
                     for interp in interp_list:
                         interp_str = str(interp).strip()
@@ -201,11 +205,11 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                             engineering_interpretations.append(conservative_statement)
 
                     sections.append({
-                        "heading": "Engineering Interpretation",
+                        "heading": "Engineering Interpretation / Hypotheses",
                         "content": engineering_interpretations,
                     })
 
-                    # Limitations / Uncertainty
+                    # Limitations / Uncertain Observations
                     limitations = []
                     for u in uncert_list:
                         u_str = str(u).strip()
@@ -228,6 +232,16 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                         "content": limitations,
                     })
 
+                    sections.append({
+                        "heading": "Sources & Grounding",
+                        "content": [
+                            f"Task Reference ID: {task_id}",
+                            f"Source image: {source_doc}",
+                            f"Analysis Engine / Model: {vision_model_used} (on-premise, 0 cloud egress)",
+                            f"Generated Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}",
+                        ],
+                    })
+
                     summary_text = "; ".join(cleaned_obs) if cleaned_obs else "Visual inspection completed."
 
                     doc_payload = {
@@ -236,6 +250,7 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                         "source_document": source_doc,
                         "facility": f"Source image: {source_doc}",
                         "status": f"Analyzed via {vision_model_used} (on-premise)",
+                        "analysis_model": vision_model_used,
                         "summary": summary_text,
                         "sections": sections,
                         "sources": [f"Uploaded image: {source_doc}"],
@@ -328,8 +343,21 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                 try:
                     from backend.app.services.vision_service import get_vision_app_service
                     vision_app = get_vision_app_service()
+
+                    def handle_vlm_retry(retry_idx: int, total_retries: int, msg: str):
+                        broadcaster.log_and_emit(
+                            task_id=task_id,
+                            node="execution",
+                            message=f"[model_retry] {msg}",
+                            level="warn",
+                        )
+
                     if attached_file_id:
-                        v_res = vision_app.analyze_file(file_id=attached_file_id, prompt=state.get("goal"))
+                        v_res = vision_app.analyze_file(
+                            file_id=attached_file_id,
+                            prompt=state.get("goal"),
+                            on_retry=handle_vlm_retry,
+                        )
                         raw_result = {
                             "type": "vision",
                             "model_id": v_res.model_used or vision_model_to_use,
@@ -350,6 +378,7 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                             "error": "No image file attached for vision task.",
                             "execution_status": "error",
                             "error_type": "missing_image_file",
+                            "error_message": "No image file attached for vision task.",
                         }
                         broadcaster.log_and_emit(
                             task_id=task_id,
@@ -359,18 +388,40 @@ def execution_node(state: AgentState) -> Dict[str, Any]:
                         )
                 except Exception as e:
                     logger.error(f"[{task_id}] Multimodal vision execution error: {e}", exc_info=True)
+                    err_str = str(e)
+                    err_lower = err_str.lower()
+                    if "timed out" in err_lower or "timeout" in err_lower:
+                        error_type = "model_unavailable"
+                        health_msg = f"[model_health] Local vision model unavailable after {settings.ollama.max_retries} retries."
+                        obs_err_msg = "Local vision model unavailable"
+                    elif "unavailable" in err_lower or "unreachable" in err_lower or "not installed" in err_lower or "not pulled" in err_lower or "connect" in err_lower:
+                        error_type = "model_unavailable"
+                        health_msg = f"[model_health] Local vision model unavailable: llava:7b-v1.5-q4_K_M"
+                        obs_err_msg = "Local vision model unavailable"
+                    else:
+                        error_type = "vision_error"
+                        health_msg = f"[model_health] Vision analysis error: {err_str}"
+                        obs_err_msg = err_str
+
+                    broadcaster.log_and_emit(
+                        task_id=task_id,
+                        node="execution",
+                        message=health_msg,
+                        level="error",
+                    )
                     raw_result = {
                         "type": "vision",
                         "model_id": vision_model_to_use,
                         "success": False,
-                        "error": str(e),
+                        "error": obs_err_msg,
                         "execution_status": "error",
-                        "error_type": "model_unavailable" if "unavailable" in str(e).lower() else "vision_error",
+                        "error_type": error_type,
+                        "error_message": err_str,
                     }
                     broadcaster.log_and_emit(
                         task_id=task_id,
                         node="execution",
-                        message=f"Multimodal vision execution failed: {e}",
+                        message=f"Multimodal vision execution failed: {err_str}",
                         level="error",
                     )
         else:

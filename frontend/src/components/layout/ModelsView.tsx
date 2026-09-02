@@ -38,7 +38,7 @@ export const ModelsView: React.FC = () => {
           <IconCompass size={40} color="#9ca3af" />
           <div className="cv-empty-title">No Local Models Detected</div>
           <div className="cv-empty-desc">
-            Ensure the local Ollama backend is running and models (Llama 3, Qwen 2.5, LLaVA) are loaded.
+            Ensure the local Ollama backend is running and models (Qwen 2.5, Qwen 2.5 Coder, LLaVA 7B) are loaded.
           </div>
         </div>
       ) : (

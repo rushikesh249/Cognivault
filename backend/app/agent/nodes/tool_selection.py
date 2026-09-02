@@ -176,27 +176,32 @@ def tool_selection_node(state: AgentState) -> Dict[str, Any]:
                         },
                     }
         elif "analyze" in step_lower and ("local model" in step_lower or "document content" in step_lower):
-            # Model-analysis step stages no tool: the Execution node performs
-            # grounded local-model inference over the extracted document text.
-            pass
+            # Model-analysis step: Stage 4 tool_selection event must be emitted explicitly
+            broadcaster.log_and_emit(
+                task_id=task_id,
+                node="tool_selection",
+                message="Selected grounded document analysis capability via local general model.",
+                level="info",
+            )
+            return {"_staged_tool_call": None}
         elif "extract" in step_lower or "ocr" in step_lower or "scan" in step_lower or "finding" in step_lower:
             if "extract_text_from_scan" in permitted_tools:
                 file_id = None
                 with get_db_context() as session:
                     repo = FileRepository(session)
                     task_files = repo.list_by_task_id(task_id)
-                    # Filter for files that genuinely exist on disk
-                    existing_task_files = [f for f in task_files if Path(f.storage_path).exists()]
+                    # Filter for task files that genuinely exist on disk and are not corrupted/empty
+                    existing_task_files = [f for f in task_files if Path(f.storage_path).exists() and Path(f.storage_path).stat().st_size > 100]
                     if existing_task_files:
                         file_id = existing_task_files[0].file_id
                     else:
-                        all_files = repo.list_files(limit=10)
-                        valid_files = [f for f in all_files if Path(f.storage_path).exists()]
-                        if valid_files and ("MRPL-INSP" not in goal and "scanned_inspection_report" not in goal):
-                            file_id = valid_files[0].file_id
-                            repo.attach_to_task(file_id, task_id)
-                        else:
+                        demo_pdf = Path("knowledge_base/demo_inputs/scanned_inspection_report.pdf")
+                        if demo_pdf.exists():
                             file_id = "scanned_inspection_report.pdf"
+                        else:
+                            all_files = repo.list_files(limit=10)
+                            valid_files = [f for f in all_files if Path(f.storage_path).exists() and Path(f.storage_path).stat().st_size > 100]
+                            file_id = valid_files[0].file_id if valid_files else "scanned_inspection_report.pdf"
 
                 staged_call = {
                     "tool_name": "extract_text_from_scan",
@@ -300,7 +305,7 @@ def tool_selection_node(state: AgentState) -> Dict[str, Any]:
             broadcaster.log_and_emit(
                 task_id=task_id,
                 node="tool_selection",
-                message="Selected visual inspection report generation tool with required permissions.",
+                message="Selected visual inspection report generation tool",
                 level="info",
             )
             return {"_staged_tool_call": None}
@@ -308,7 +313,7 @@ def tool_selection_node(state: AgentState) -> Dict[str, Any]:
             broadcaster.log_and_emit(
                 task_id=task_id,
                 node="tool_selection",
-                message="Selected vision analysis tool with required permissions.",
+                message="Selected vision analysis tool",
                 level="info",
             )
             return {"_staged_tool_call": None}

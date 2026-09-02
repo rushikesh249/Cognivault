@@ -40,14 +40,14 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
     latest_struct = observations[-1].get("structured_data", {}) if observations else {}
     if latest_struct.get("execution_status") == "error":
         error_type = latest_struct.get("error_type", "tool_error")
-        error_message = latest_struct.get("error_message", "unknown tool execution error")
-        validation_notes = f"Infrastructure/tool execution failure ({error_type}): {error_message}"
+        error_message = latest_struct.get("error_message") or latest_struct.get("error") or "unknown execution error"
+        validation_notes = f"Infrastructure failure ({error_type}): {error_message}"
         broadcaster = get_event_broadcaster()
         logger.error(f"[{task_id}] Validation aborted: {validation_notes}")
         broadcaster.log_and_emit(
             task_id=task_id,
             node="validation",
-            message=f"Infrastructure failure ({error_type}): {error_message}. Terminating without self-correction.",
+            message=f"Infrastructure failure ({error_type}). Terminating without self-correction.",
             level="error",
         )
         return {
@@ -133,14 +133,36 @@ def validation_node(state: AgentState) -> Dict[str, Any]:
                                         ]
                                         # Anti-hallucination guard: canned industrial demo content
                                         # must never appear in a report grounded in an unrelated
-                                        # uploaded document.
+                                        # uploaded document (unless present in the source text).
                                         forbidden_markers = [
                                             "Technical Approval Note", "PRV-204",
                                             "Refining Unit 02", "P-102A", "MRPL-INSP",
                                         ]
 
+                                    extracted_text = ""
+                                    for obs in observations:
+                                        s_data = obs.get("structured_data", {})
+                                        if s_data.get("extracted_text"):
+                                            extracted_text = s_data["extracted_text"]
+                                            break
+                                        data_dict = s_data.get("data")
+                                        if isinstance(data_dict, dict) and data_dict.get("text"):
+                                            extracted_text = data_dict["text"]
+                                            break
+                                        out_dict = s_data.get("output")
+                                        if isinstance(out_dict, dict) and out_dict.get("text"):
+                                            extracted_text = out_dict["text"]
+                                            break
+                                        if s_data.get("analysis") and isinstance(s_data["analysis"], dict):
+                                            # Also check analysis summary/findings
+                                            extracted_text += " " + str(s_data["analysis"].get("summary", ""))
+
+                                    source_text_lower = extracted_text.lower()
                                     missing = [m for m in required_markers if m.lower() not in doc_text_lower]
-                                    present_forbidden = [m for m in forbidden_markers if m.lower() in doc_text_lower]
+                                    present_forbidden = [
+                                        m for m in forbidden_markers
+                                        if m.lower() in doc_text_lower and m.lower() not in source_text_lower
+                                    ]
                                     if missing:
                                         validation_passed = False
                                         validation_notes = f"DOCX artifact missing required sections: {missing}"

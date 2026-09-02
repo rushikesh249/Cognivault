@@ -10,7 +10,7 @@ echo "============================================================"
 MODELS=(
     "qwen2.5:7b-instruct-q4_K_M"
     "qwen2.5-coder:7b-instruct-q4_K_M"
-    "llava:7b-q4_K_M"
+    "llava:7b-v1.5-q4_K_M"
 )
 
 for model in "${MODELS[@]}"; do

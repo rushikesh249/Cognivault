@@ -20,46 +20,56 @@ def task_understanding_node(state: AgentState) -> Dict[str, Any]:
     task_type = state.get("task_type", "document")
     goal = state.get("goal", "").strip()
 
-    # Check attached files for image content
-    has_image_attachment = False
-    with get_db_context() as session:
-        repo = FileRepository(session)
-        task_files = repo.list_by_task_id(task_id)
-        for f in task_files:
-            fn = (f.filename or "").lower()
-            mt = (f.mime_type or "").lower()
-            if mt.startswith("image/") or any(fn.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"]):
-                has_image_attachment = True
-                break
-
     goal_lower = goal.lower()
-    if has_image_attachment or "inspection image" in goal_lower or "equipment photograph" in goal_lower or "visual inspection" in goal_lower or "turbine blade" in goal_lower:
-        if task_type != "coding":
-            task_type = "vision"
-            # Update DB task_type if needed
-            try:
-                with get_db_context() as session:
-                    t_repo = TaskRepository(session)
-                    t_obj = t_repo.get_by_id(task_id)
-                    if t_obj and t_obj.task_type != "vision":
-                        t_obj.task_type = "vision"
-                        session.commit()
-            except Exception:
-                pass
-    elif any(k in goal_lower for k in ["factorial", "function", "unit test", "pytest", "docker sandbox", "python code", "algorithm", "self-correct", "debug", "refactor"]):
-        task_type = "coding"
-        try:
-            with get_db_context() as session:
-                t_repo = TaskRepository(session)
-                t_obj = t_repo.get_by_id(task_id)
-                if t_obj and t_obj.task_type != "coding":
-                    t_obj.task_type = "coding"
-                    session.commit()
-        except Exception:
-            pass
 
-    if task_type not in ["document", "coding", "vision"]:
+    # Check for coding keywords
+    coding_keywords = [
+        "factorial", "function", "unit test", "pytest", "docker sandbox",
+        "python code", "algorithm", "self-correct", "debug", "refactor",
+    ]
+    is_coding_goal = any(k in goal_lower for k in coding_keywords)
+
+    # Check for explicit document keywords
+    doc_keywords = [
+        "scanned document", "approval note", "read this", "compliance note",
+        "compliance review", "sop compliance", "sop document", "inspection report",
+        "document intelligence", "technical approval", "extract text from scan",
+        "structured analysis report", "document compliance",
+    ]
+    is_explicit_doc_goal = any(k in goal_lower for k in doc_keywords)
+
+    # Check for explicit vision inspection keywords
+    vision_keywords = [
+        "inspect this image", "corrosion", "equipment condition", "visual inspection",
+        "equipment photograph", "turbine blade", "defect classification",
+        "multimodal inspection", "inspection target", "inspection image", "surface condition",
+    ]
+    is_explicit_vision_goal = any(k in goal_lower for k in vision_keywords)
+
+    if is_coding_goal or task_type == "coding":
+        task_type = "coding"
+    elif is_explicit_vision_goal and not is_explicit_doc_goal:
+        task_type = "vision"
+    elif task_type == "vision":
+        # Keep vision unless explicitly asking for document analysis
+        if is_explicit_doc_goal and not is_explicit_vision_goal:
+            task_type = "document"
+        else:
+            task_type = "vision"
+    else:
+        # Default to document. Uploaded image on document task is treated as a scanned document page for OCR.
         task_type = "document"
+
+    # Synchronize resolved task_type back to task repository if modified
+    try:
+        with get_db_context() as session:
+            t_repo = TaskRepository(session)
+            t_obj = t_repo.get_by_id(task_id)
+            if t_obj and t_obj.task_type != task_type:
+                t_obj.task_type = task_type
+                session.commit()
+    except Exception as e:
+        logger.debug(f"[{task_id}] Could not sync task_type to DB: {e}")
 
     logger.info(f"[{task_id}] Executing Task Understanding (task_type: {task_type})")
     

@@ -153,7 +153,7 @@ except OSError as e:
     assert "WRITE_BLOCKED" in res.stdout
 
 
-def test_api_code_execute_endpoint():
+def test_api_code_execute_endpoint(docker_runner):
     """Verify POST /api/code/execute endpoint (TRD Section 9, Table 17)."""
     client = TestClient(app)
     payload = {

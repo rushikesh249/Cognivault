@@ -12,7 +12,15 @@ from backend.app.models.router import ModelRouter
 from backend.app.persistence.artifact_repository import ArtifactRepository
 from backend.app.persistence.db import get_db_context
 from backend.app.persistence.task_repository import TaskRepository
-from backend.app.sandbox.docker_runner import get_docker_runner
+from backend.app.sandbox.docker_runner import DockerRunner, get_docker_runner
+from backend.app.persistence.db import init_db
+
+
+@pytest.fixture(autouse=True)
+def check_docker():
+    init_db()
+    if not DockerRunner().is_available():
+        pytest.skip("Docker engine is not running on this host environment")
 
 
 def test_coding_task_classification_and_routing():

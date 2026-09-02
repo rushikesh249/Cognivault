@@ -203,21 +203,21 @@ def observation_node(state: AgentState) -> Dict[str, Any]:
                     structured_data["passed"] = True
 
         elif success:
-            content = f"Tool '{tool_name}' returned valid output."
+            content = f"{tool_name} returned valid output"
             obs_level = "info"
         else:
             content = f"Tool '{tool_name}' failed: {raw_res.get('error', 'unknown error')}"
             obs_level = "error"
 
     elif res_type == "vision":
-        # Multimodal Vision observation handling (TRD ?18.1, Table 48)
+        # Multimodal Vision observation handling (TRD Section 18.1, Table 48)
         if success:
             vr = structured_data.get("vision_result", {})
             obs_list = vr.get("observation", [])
-            content = f"VLM extracted {len(obs_list)} visual observation(s): {'; '.join(obs_list[:2])}"
+            content = f"VLM extracted visual observations: {'; '.join(obs_list[:2])}"
             obs_level = "info"
         else:
-            content = f"Vision analysis failed: {structured_data.get('error', 'unknown error')}"
+            content = f"Vision analysis failed: {structured_data.get('error', 'Local vision model unavailable')}"
             obs_level = "error"
 
     else:
